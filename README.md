@@ -117,21 +117,24 @@ This is a **single-user, self-hosted** application. There is no multi-user suppo
 jade/
 ├── ✅ README.md                 # THIS FILE — single source of truth
 ├── ✅ CLAUDE.md                 # Claude Code instructions and context
+├── ✅ CHANGELOG.md              # Version history (Keep a Changelog format)
+├── ✅ VERSION                   # Semver version string
+├── ✅ .gitignore
 ├── 🔲 docker-compose.yml        # Deployment orchestration (Phase 6)
 ├── 🔲 Dockerfile                # Flask app container (Phase 6)
 ├── 🔲 .env.example              # Environment variable template (Phase 6)
 ├── 🔲 litestream.yml            # Database backup config (Phase 6)
-├── 🔲 requirements.txt          # Python dependencies (Phase 1)
+├── ✅ requirements.txt          # Python dependencies (Phase 1)
 │
-├── 🔲 app/                      # Flask application (Phase 1)
-│   ├── 🔲 __init__.py           # App factory, register blueprints
-│   ├── 🔲 db.py                 # SQLite connection manager, PRAGMAs
-│   ├── 🔲 schema.sql            # Full database schema
-│   ├── 🔲 migrations/           # Numbered migration files
-│   │   └── 🔲 001_initial.sql
+├── ✅ app/                      # Flask application (Phase 1)
+│   ├── ✅ __init__.py           # App factory, register blueprints
+│   ├── ✅ db.py                 # SQLite connection manager, PRAGMAs
+│   ├── ✅ schema.sql            # Full database schema
+│   ├── ✅ migrations/           # Numbered migration files
+│   │   └── ✅ 001_initial.sql
 │   │
-│   ├── 🔲 routes/               # API route blueprints
-│   │   ├── 🔲 __init__.py
+│   ├── ✅ routes/               # API route blueprints
+│   │   ├── ✅ __init__.py
 │   │   ├── 🔲 transactions.py   # GET/POST/PUT/DELETE transactions (Phase 1)
 │   │   ├── 🔲 upload.py         # Monzo CSV import endpoint (Phase 2)
 │   │   ├── 🔲 categories.py     # Category management (Phase 1)
@@ -142,17 +145,17 @@ jade/
 │   │   ├── 🔲 reports.py        # Aggregated analytics & stats (Phase 5)
 │   │   └── 🔲 dashboard.py      # Dashboard summary data (Phase 3)
 │   │
-│   ├── 🔲 services/             # Business logic layer
-│   │   ├── 🔲 __init__.py
+│   ├── ✅ services/             # Business logic layer
+│   │   ├── ✅ __init__.py
 │   │   ├── 🔲 csv_parser.py     # Monzo CSV parsing & validation (Phase 2)
 │   │   ├── 🔲 trade_calculator.py # R-multiples, win rate, etc. (Phase 4)
 │   │   └── 🔲 analytics.py      # Spending analytics (Phase 3)
 │   │
-│   └── 🔲 utils/                # Shared utilities
-│       ├── 🔲 __init__.py
+│   └── ✅ utils/                # Shared utilities
+│       ├── ✅ __init__.py
 │       └── 🔲 formatters.py     # Currency formatting, date helpers
 │
-├── 🔲 frontend/                 # Static frontend (served by Caddy)
+├── 🔲 frontend/                 # Static frontend (served by Flask)
 │   ├── 🔲 index.html            # Shell HTML — SPA entry point (Phase 1)
 │   ├── 🔲 css/
 │   │   └── 🔲 style.css         # Full design system (Phase 1)
@@ -178,7 +181,7 @@ jade/
 │   └── 🔲 assets/
 │       └── 🔲 jade-logo.svg     # App logo
 │
-├── 🔲 data/                     # SQLite database files (gitignored)
+├── ✅ data/                     # SQLite database files (gitignored)
 │   └── 🔲 jade.db
 │
 ├── 🔲 demo-data/                # Demo instance data (Phase 6)
@@ -1281,15 +1284,15 @@ def run_migrations(db_path):
 
 ## Development Roadmap
 
-> **Current Phase: Not started — begin with Phase 1.1**
+> **Current Phase: Phase 1 — working on 1.3**
 >
 > When completing a task, update this README: check the box `[x]` and update the Project Structure status icons from 🔲 to ✅ for any files created.
 
 ### Phase 1: Foundation ✦ PRIORITY
 > Personal finance core — get transactions in, display them, categorise them.
 
-- [ ] **1.1** Project scaffolding: Flask app factory, SQLite setup, PRAGMA config
-- [ ] **1.2** Database schema: `schema_version`, `transactions`, `categories` tables
+- [x] **1.1** Project scaffolding: Flask app factory, SQLite setup, PRAGMA config
+- [x] **1.2** Database schema: `schema_version`, `transactions`, `categories` tables
 - [ ] **1.3** Seed default categories on first run
 - [ ] **1.4** Transaction CRUD API endpoints
 - [ ] **1.5** Frontend shell: `index.html`, CSS design system, router, sidebar nav
