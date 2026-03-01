@@ -5,7 +5,7 @@ Flask application factory.
 
 import os
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
 
 from flask import Flask, send_from_directory
 
@@ -41,8 +41,8 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.teardown_appcontext(close_db)
 
     # --- Register blueprints ---
-    # Route blueprints are registered here as they are built out in later phases.
-    # (No routes yet in Phase 1.1 — added in 1.4+)
+    from .routes.transactions import bp as transactions_bp
+    app.register_blueprint(transactions_bp)
 
     # --- Serve frontend ---
     frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")

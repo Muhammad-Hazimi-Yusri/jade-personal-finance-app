@@ -15,6 +15,52 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.1.2] — 2026-03-01
+
+### Added
+
+#### Phase 1.4 — Transaction CRUD API
+
+- `app/services/transactions.py`: service layer with five public functions and
+  private helpers for validation:
+  - `list_transactions()` — paginated, filtered query with dynamic WHERE clause;
+    supports category, type, date range, full-text search (name/notes/description),
+    amount range, sort field, and order direction
+  - `get_transaction()` — single row lookup by primary key; returns `None` if not found
+  - `create_transaction()` — INSERT with required-field checks, ISO 8601 date
+    validation, non-zero amount validation, and category existence check;
+    derives `is_income` automatically from the sign of `amount`
+  - `update_transaction()` — partial UPDATE restricted to `_UPDATABLE_FIELDS`;
+    re-derives `is_income` when `amount` changes; sets `updated_at = datetime('now')`
+    via SQL literal for consistent UTC timestamps
+  - `delete_transaction()` — DELETE by ID; returns `bool` indicating whether a row
+    was actually removed
+  - Private helpers: `_validate_iso_date()`, `_validate_amount()`,
+    `_validate_category()`, `_row_to_dict()`
+
+- `app/routes/transactions.py`: Blueprint registered at `/api/transactions`:
+  - `GET /api/transactions` — list with pagination envelope
+    (`transactions`, `pagination.page/per_page/total/total_pages/has_next/has_prev`)
+    and all query-param filters
+  - `GET /api/transactions/<id>` — single transaction or 404
+  - `POST /api/transactions` — create; returns 201 with full created row
+  - `PUT /api/transactions/<id>` — partial update; returns 200 with updated row,
+    404 if not found, 422 on validation error
+  - `DELETE /api/transactions/<id>` — returns 204 No Content or 404
+
+- Blueprint registered in `app/__init__.py`
+
+### Validation rules
+- `sort` field whitelisted against `_SORTABLE_FIELDS` (prevents ORDER BY injection)
+- `order` accepted only as `'asc'` or `'desc'`; route returns 400 for invalid values
+- `date` validated with `datetime.fromisoformat()` (handles `Z`-suffix for Python 3.10 compat)
+- `amount` validated as non-zero float; zero triggers 422
+- `category` validated against `categories` table on create/update
+- `name` validated as non-empty string after stripping whitespace
+- `per_page` capped at 200 in the service layer
+
+---
+
 ## [0.1.1] — 2026-03-01
 
 ### Added
@@ -99,6 +145,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-[Unreleased]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.1...HEAD
+[Unreleased]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.2...HEAD
+[0.1.2]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/jimi-coding/jade-personal-finance-app/releases/tag/v0.1.0

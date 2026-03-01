@@ -135,7 +135,7 @@ jade/
 │   │
 │   ├── ✅ routes/               # API route blueprints
 │   │   ├── ✅ __init__.py
-│   │   ├── 🔲 transactions.py   # GET/POST/PUT/DELETE transactions (Phase 1)
+│   │   ├── ✅ transactions.py   # GET/POST/PUT/DELETE transactions (Phase 1)
 │   │   ├── 🔲 upload.py         # Monzo CSV import endpoint (Phase 2)
 │   │   ├── 🔲 categories.py     # Category management (Phase 1)
 │   │   ├── 🔲 budgets.py        # Budget CRUD (Phase 3)
@@ -147,6 +147,7 @@ jade/
 │   │
 │   ├── ✅ services/             # Business logic layer
 │   │   ├── ✅ __init__.py
+│   │   ├── ✅ transactions.py   # Transaction CRUD logic & validation (Phase 1)
 │   │   ├── 🔲 csv_parser.py     # Monzo CSV parsing & validation (Phase 2)
 │   │   ├── 🔲 trade_calculator.py # R-multiples, win rate, etc. (Phase 4)
 │   │   └── 🔲 analytics.py      # Spending analytics (Phase 3)
@@ -1284,7 +1285,7 @@ def run_migrations(db_path):
 
 ## Development Roadmap
 
-> **Current Phase: Phase 1 — working on 1.4**
+> **Current Phase: Phase 1 — working on 1.5**
 >
 > When completing a task, update this README: check the box `[x]` and update the Project Structure status icons from 🔲 to ✅ for any files created.
 
@@ -1294,7 +1295,7 @@ def run_migrations(db_path):
 - [x] **1.1** Project scaffolding: Flask app factory, SQLite setup, PRAGMA config
 - [x] **1.2** Database schema: `schema_version`, `transactions`, `categories` tables
 - [x] **1.3** Seed default categories on first run
-- [ ] **1.4** Transaction CRUD API endpoints
+- [x] **1.4** Transaction CRUD API endpoints
 - [ ] **1.5** Frontend shell: `index.html`, CSS design system, router, sidebar nav
 - [ ] **1.6** Transactions list view with pagination, sorting, filtering
 - [ ] **1.7** Manual transaction add/edit forms
