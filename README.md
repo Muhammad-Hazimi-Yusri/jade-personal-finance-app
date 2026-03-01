@@ -137,7 +137,7 @@ jade/
 │   │   ├── ✅ __init__.py
 │   │   ├── ✅ transactions.py   # GET/POST/PUT/DELETE transactions (Phase 1)
 │   │   ├── 🔲 upload.py         # Monzo CSV import endpoint (Phase 2)
-│   │   ├── 🔲 categories.py     # Category management (Phase 1)
+│   │   ├── ✅ categories.py     # Category list endpoint (Phase 1.6)
 │   │   ├── 🔲 budgets.py        # Budget CRUD (Phase 3)
 │   │   ├── 🔲 trades.py         # Trading journal CRUD (Phase 4)
 │   │   ├── 🔲 accounts.py       # Trading account management (Phase 4)
@@ -1286,7 +1286,7 @@ def run_migrations(db_path):
 
 ## Development Roadmap
 
-> **Current Phase: Phase 1 — working on 1.6**
+> **Current Phase: Phase 1 — working on 1.7**
 >
 > When completing a task, update this README: check the box `[x]` and update the Project Structure status icons from 🔲 to ✅ for any files created.
 
@@ -1298,7 +1298,7 @@ def run_migrations(db_path):
 - [x] **1.3** Seed default categories on first run
 - [x] **1.4** Transaction CRUD API endpoints
 - [x] **1.5** Frontend shell: `index.html`, CSS design system, router, sidebar nav
-- [ ] **1.6** Transactions list view with pagination, sorting, filtering
+- [x] **1.6** Transactions list view with pagination, sorting, filtering
 - [ ] **1.7** Manual transaction add/edit forms
 - [ ] **1.8** Category management (list, create custom, assign colours)
 

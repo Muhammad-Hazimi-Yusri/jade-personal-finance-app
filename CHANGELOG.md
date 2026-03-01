@@ -15,6 +15,37 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.1.4] — 2026-03-01
+
+### Added
+
+#### Phase 1.6 — Transactions List View
+
+- `app/routes/categories.py`: read-only Blueprint at `/api/categories`:
+  - `GET /api/categories/` — returns all 16 categories ordered by `display_name`;
+    each object includes `id`, `name`, `display_name`, `colour`, `icon`, `is_default`
+  - Registered in `app/__init__.py` alongside the transactions blueprint
+
+- `frontend/js/views/transactions.js`: full transactions list view:
+  - **Filter bar** (card): live search (debounced 300ms) across name/notes/description;
+    category dropdown populated from `/api/categories/`; start/end date pickers;
+    Clear button resets all filters
+  - **Sortable table**: columns Date, Name, Category, Amount — clicking a header sorts
+    by that column (`desc` first); clicking the active column toggles `asc`/`desc`;
+    active column highlighted with `↑`/`↓` indicator in primary colour
+  - **Category display**: resolves raw `category` snake_case name to human `display_name`
+    via the cached categories response; falls back to raw name gracefully
+  - **Amount formatting**: uses `formatCurrency()` — coloured red (expense) / green (income),
+    monospaced, typographic minus sign
+  - **Pagination bar**: shows `start–end of total` count; Page X of Y; Prev/Next buttons
+    disabled at boundaries
+  - **Empty state**: friendly message when no transactions match current filters
+  - **Error state**: displays API error message inline if fetch fails
+  - Module-level state (`page`, `sort`, `order`, `search`, `category`, `startDate`,
+    `endDate`) reset on each `render()` call for clean navigation
+
+---
+
 ## [0.1.3] — 2026-03-01
 
 ### Added
@@ -203,7 +234,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-[Unreleased]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.3...HEAD
+[Unreleased]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.4...HEAD
+[0.1.4]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.0...v0.1.1
