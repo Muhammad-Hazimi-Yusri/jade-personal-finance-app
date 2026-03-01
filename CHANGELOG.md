@@ -15,6 +15,64 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.1.3] — 2026-03-01
+
+### Added
+
+#### Phase 1.5 — Frontend Shell
+
+- `frontend/index.html`: SPA entry point with:
+  - Google Fonts CDN (`Inter`, `JetBrains Mono`)
+  - Chart.js and TradingView Lightweight Charts CDN `<script defer>` (used from Phase 3+)
+  - `.app-layout` flex container: fixed sidebar + scrollable main content area
+  - Two-section sidebar nav: **Finance** (Dashboard, Transactions, Upload CSV, Budgets)
+    and **Trading** (Trade Log, New Trade, Analytics, Journal), plus Settings
+  - `<script type="module">` bootstrap for `js/app.js`
+
+- `frontend/css/style.css`: full design system (~280 lines):
+  - CSS custom properties for all colours, fonts, spacing (8px grid), and border radii
+    from README Branding section
+  - CSS reset (box-sizing, margins)
+  - Layout: `.app-layout`, `.sidebar` (240px, `var(--color-surface)`, border-right),
+    `.sidebar-header`, `.main-content` (flex-grow, overflow-y scroll)
+  - Navigation: `.nav-list`, `.nav-section-label`, `.nav-link` with active state
+    (left border accent + primary colour background tint), `.nav-divider`
+  - Base components: `.card`, `.card-title`, `.page-header`, `.btn` / `.btn-primary` /
+    `.btn-ghost` / `.btn-danger`, `.badge` variants (success/danger/warning/info/neutral)
+  - Form elements: `.form-group`, `input`, `select`, `textarea` with focus border
+  - Table: `table`, `thead th`, `tbody td` with hover rows, `.td-right` alignment
+  - Utility classes: `.text-success/danger/warning/info/muted/secondary`, `.mono`,
+    `.font-medium/semibold`, `.flex`, `.grid-2/3/4`, `.gap-*`, `.mt-*/mb-*`
+  - State classes: `.loading`, `.error-state`, `.empty-state`
+
+- `frontend/js/app.js`: hash-based SPA router:
+  - Route map for all 9 views using dynamic `import()` for code splitting
+  - `handleRoute()`: parses `window.location.hash`, resolves route (exact + prefix
+    fallback for nested paths like `trades/123`), dynamically imports view module,
+    calls `render(container)`, handles errors with inline error state display
+  - `updateActiveNav()`: applies `.active` class to matching sidebar link on each route change
+  - Initialises on `DOMContentLoaded`; defaults empty hash to `#/`
+
+- `frontend/js/api.js`: fetch wrapper (`api.get/post/put/del`):
+  - Sets `Content-Type: application/json` on all requests
+  - Parses JSON response body; extracts `error`/`message` field for readable error throws
+  - Throws `Error` on any non-2xx response
+
+- `frontend/js/utils.js`: shared formatting helpers:
+  - `formatCurrency(amount, coloured)` — `£1,234.56` with `text-success`/`text-danger`
+    colour classes and typographic minus sign; `mono` font class applied
+  - `formatDate(isoString)` — `15 Jan 2024` (en-GB locale)
+  - `formatDateShort(isoString)` — `15/01/24`
+  - `escHtml(str)` — HTML entity escaping for safe template literal interpolation
+
+- `frontend/js/views/*.js`: stub view modules for all 9 routes so navigation works
+  without JS errors before views are fully implemented:
+  `dashboard.js`, `transactions.js`, `upload.js`, `budgets.js`, `trades.js`,
+  `trade-form.js`, `trade-analytics.js`, `journal.js`, `settings.js` —
+  each exports `async function render(container)` with a placeholder message
+
+---
+
 ## [0.1.2] — 2026-03-01
 
 ### Added
@@ -145,7 +203,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-[Unreleased]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.2...HEAD
+[Unreleased]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.3...HEAD
+[0.1.3]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.1...v0.1.2
 [0.1.1]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/jimi-coding/jade-personal-finance-app/releases/tag/v0.1.0

@@ -156,29 +156,30 @@ jade/
 │       ├── ✅ __init__.py
 │       └── 🔲 formatters.py     # Currency formatting, date helpers
 │
-├── 🔲 frontend/                 # Static frontend (served by Flask)
-│   ├── 🔲 index.html            # Shell HTML — SPA entry point (Phase 1)
-│   ├── 🔲 css/
-│   │   └── 🔲 style.css         # Full design system (Phase 1)
-│   ├── 🔲 js/
-│   │   ├── 🔲 app.js            # Router, navigation, initialisation (Phase 1)
-│   │   ├── 🔲 api.js            # Fetch wrapper for all API calls (Phase 1)
-│   │   ├── 🔲 utils.js          # Shared formatting, helpers
+├── ✅ frontend/                 # Static frontend (served by Flask)
+│   ├── ✅ index.html            # Shell HTML — SPA entry point (Phase 1)
+│   ├── ✅ css/
+│   │   └── ✅ style.css         # Full design system (Phase 1)
+│   ├── ✅ js/
+│   │   ├── ✅ app.js            # Router, navigation, initialisation (Phase 1)
+│   │   ├── ✅ api.js            # Fetch wrapper for all API calls (Phase 1)
+│   │   ├── ✅ utils.js          # Shared formatting, helpers
 │   │   ├── 🔲 components/       # Reusable UI components
 │   │   │   ├── 🔲 modal.js
 │   │   │   ├── 🔲 toast.js
 │   │   │   ├── 🔲 table.js
 │   │   │   ├── 🔲 chart-helpers.js
 │   │   │   └── 🔲 form-helpers.js
-│   │   └── 🔲 views/            # Page-level view modules
-│   │       ├── 🔲 dashboard.js
-│   │       ├── 🔲 transactions.js
-│   │       ├── 🔲 upload.js
-│   │       ├── 🔲 budgets.js
-│   │       ├── 🔲 trades.js
-│   │       ├── 🔲 trade-form.js
-│   │       ├── 🔲 trade-analytics.js
-│   │       └── 🔲 settings.js
+│   │   └── ✅ views/            # Page-level view modules
+│   │       ├── ✅ dashboard.js
+│   │       ├── ✅ transactions.js
+│   │       ├── ✅ upload.js
+│   │       ├── ✅ budgets.js
+│   │       ├── ✅ trades.js
+│   │       ├── ✅ trade-form.js
+│   │       ├── ✅ trade-analytics.js
+│   │       ├── ✅ journal.js
+│   │       └── ✅ settings.js
 │   └── 🔲 assets/
 │       └── 🔲 jade-logo.svg     # App logo
 │
@@ -1285,7 +1286,7 @@ def run_migrations(db_path):
 
 ## Development Roadmap
 
-> **Current Phase: Phase 1 — working on 1.5**
+> **Current Phase: Phase 1 — working on 1.6**
 >
 > When completing a task, update this README: check the box `[x]` and update the Project Structure status icons from 🔲 to ✅ for any files created.
 
@@ -1296,7 +1297,7 @@ def run_migrations(db_path):
 - [x] **1.2** Database schema: `schema_version`, `transactions`, `categories` tables
 - [x] **1.3** Seed default categories on first run
 - [x] **1.4** Transaction CRUD API endpoints
-- [ ] **1.5** Frontend shell: `index.html`, CSS design system, router, sidebar nav
+- [x] **1.5** Frontend shell: `index.html`, CSS design system, router, sidebar nav
 - [ ] **1.6** Transactions list view with pagination, sorting, filtering
 - [ ] **1.7** Manual transaction add/edit forms
 - [ ] **1.8** Category management (list, create custom, assign colours)
