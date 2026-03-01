@@ -15,6 +15,41 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.1.1] — 2026-03-01
+
+### Added
+
+#### Phase 1.3 — Default Category Seeding
+- `_DEFAULT_CATEGORIES` constant in `app/db.py`: 16 Monzo-standard categories
+  with name (snake_case), display label, hex colour, emoji icon, and sort order:
+
+  | # | name | label | colour |
+  |---|------|-------|--------|
+  | 0 | `general` | General | `#6B7280` |
+  | 1 | `eating_out` | Eating Out | `#F59E0B` |
+  | 2 | `groceries` | Groceries | `#10B981` |
+  | 3 | `transport` | Transport | `#3B82F6` |
+  | 4 | `shopping` | Shopping | `#8B5CF6` |
+  | 5 | `entertainment` | Entertainment | `#EC4899` |
+  | 6 | `bills` | Bills | `#EF4444` |
+  | 7 | `expenses` | Expenses | `#F97316` |
+  | 8 | `holidays` | Holidays | `#14B8A6` |
+  | 9 | `personal_care` | Personal Care | `#A855F7` |
+  | 10 | `family` | Family | `#F43F5E` |
+  | 11 | `charity` | Charity | `#6366F1` |
+  | 12 | `finances` | Finances | `#0EA5E9` |
+  | 13 | `cash` | Cash | `#84CC16` |
+  | 14 | `income` | Income | `#22D3EE` |
+  | 15 | `savings` | Savings | `#00A86B` |
+
+- `seed_categories(app)` in `app/db.py`: inserts the 16 defaults using
+  `INSERT OR IGNORE` — fully idempotent, safe to run on every startup
+- `init_db(app)` updated: now calls `seed_categories(app)` after
+  `run_migrations(app)`, so categories are always present before any
+  request is served
+
+---
+
 ## [0.1.0] — 2026-02-28
 
 ### Added
@@ -64,5 +99,6 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-[Unreleased]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.0...v0.1.1
 [0.1.0]: https://github.com/jimi-coding/jade-personal-finance-app/releases/tag/v0.1.0

@@ -1284,7 +1284,7 @@ def run_migrations(db_path):
 
 ## Development Roadmap
 
-> **Current Phase: Phase 1 — working on 1.3**
+> **Current Phase: Phase 1 — working on 1.4**
 >
 > When completing a task, update this README: check the box `[x]` and update the Project Structure status icons from 🔲 to ✅ for any files created.
 
@@ -1293,7 +1293,7 @@ def run_migrations(db_path):
 
 - [x] **1.1** Project scaffolding: Flask app factory, SQLite setup, PRAGMA config
 - [x] **1.2** Database schema: `schema_version`, `transactions`, `categories` tables
-- [ ] **1.3** Seed default categories on first run
+- [x] **1.3** Seed default categories on first run
 - [ ] **1.4** Transaction CRUD API endpoints
 - [ ] **1.5** Frontend shell: `index.html`, CSS design system, router, sidebar nav
 - [ ] **1.6** Transactions list view with pagination, sorting, filtering
