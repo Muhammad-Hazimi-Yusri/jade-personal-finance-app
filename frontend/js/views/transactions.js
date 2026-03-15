@@ -30,9 +30,12 @@ export async function render(container) {
     categoriesCache = [];
 
     container.innerHTML = `
-        <div class="page-header">
-            <h1>Transactions</h1>
-            <p class="text-secondary">Browse, search, and filter your transactions.</p>
+        <div class="page-header flex items-center justify-between">
+            <div>
+                <h1>Transactions</h1>
+                <p class="text-secondary">Browse, search, and filter your transactions.</p>
+            </div>
+            <a href="#/transactions/new" class="btn btn-primary">+ Add Transaction</a>
         </div>
 
         <!-- Filter bar -->
@@ -152,13 +155,20 @@ function renderRows(transactions) {
     }
 
     tbody.innerHTML = transactions.map(tx => `
-        <tr>
+        <tr data-id="${tx.id}" class="tx-row-clickable">
             <td class="mono text-muted" style="white-space: nowrap;">${formatDateShort(tx.date)}</td>
             <td>${escHtml(tx.name)}</td>
             <td><span class="badge badge-neutral">${categoryDisplayName(tx.category)}</span></td>
             <td class="td-right">${formatCurrency(tx.amount)}</td>
         </tr>
     `).join('');
+
+    // Click row to edit
+    tbody.querySelectorAll('tr[data-id]').forEach(row => {
+        row.addEventListener('click', () => {
+            window.location.hash = `#/transactions/edit/${row.dataset.id}`;
+        });
+    });
 }
 
 function renderPagination(pg) {

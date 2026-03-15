@@ -32,6 +32,52 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.1.5] — 2026-03-15
+
+### Added
+
+#### Phase 1.7 — Manual Transaction Add/Edit Forms
+
+- `frontend/js/views/transaction-form.js`: dual-mode form view for creating and
+  editing transactions:
+  - **Add mode** (`#/transactions/new`): empty form with date defaulted to today;
+    submits `POST /api/transactions/` on save
+  - **Edit mode** (`#/transactions/edit/:id`): loads existing transaction via
+    `GET /api/transactions/:id` and pre-populates all fields; submits
+    `PUT /api/transactions/:id` on save; includes Delete button with
+    confirmation dialog
+  - **Primary fields**: Date (date input), Name (text), Amount (number with
+    step="0.01" — negative for expenses, positive for income), Category (select
+    populated from `/api/categories/`), Notes (textarea)
+  - **Optional fields**: Type and Currency in a collapsible `<details>` section
+  - **Client-side validation**: required field checks with `.form-group--error`
+    red border highlighting and an error banner listing all issues
+  - **Save state management**: disables save button and shows "Saving…" text
+    during API call; re-enables on error
+  - **Error handling**: displays server error messages inline; shows full error
+    state if transaction not found in edit mode
+
+- `frontend/js/views/transactions.js`: updated list view with navigation:
+  - "+ Add Transaction" primary button in the page header
+  - Table rows are clickable (`cursor: pointer`) — clicking navigates to
+    `#/transactions/edit/:id` for inline editing
+
+- `frontend/js/app.js`: routing updates:
+  - Added `transactions/new` and `transactions/edit` routes pointing to
+    `transaction-form.js`
+  - Upgraded prefix matching in `handleRoute()` from single-segment to
+    progressive multi-segment matching — tries `a/b` before `a`, enabling
+    `transactions/edit/5` to resolve to the `transactions/edit` route
+
+- `frontend/css/style.css`: new form component styles:
+  - `.form-group--error` — red border on invalid inputs
+  - `.form-hint` — small muted text below inputs
+  - `.form-actions` — flex bar with top border for Save/Cancel/Delete buttons
+  - `.tx-row-clickable` — pointer cursor for clickable table rows
+  - `details summary` — styled collapsible section headers
+
+---
+
 ## [0.1.4] — 2026-03-01
 
 ### Added
@@ -251,7 +297,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-[Unreleased]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.4...HEAD
+[Unreleased]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.5...HEAD
+[0.1.5]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.2...v0.1.3
 [0.1.2]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.1...v0.1.2

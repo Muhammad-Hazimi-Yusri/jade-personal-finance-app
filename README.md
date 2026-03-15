@@ -196,6 +196,7 @@ jade/
 │   │   └── ✅ views/            # Page-level view modules
 │   │       ├── ✅ dashboard.js
 │   │       ├── ✅ transactions.js
+│   │       ├── ✅ transaction-form.js
 │   │       ├── ✅ upload.js
 │   │       ├── ✅ budgets.js
 │   │       ├── ✅ trades.js
@@ -711,7 +712,8 @@ Hash-based routing using vanilla JS. No build tools, no bundler.
 ```
 #/                      → Dashboard (combined finance + trading overview)
 #/transactions          → Transaction list with filters
-#/transactions/:id      → Transaction detail
+#/transactions/new      → Add new transaction form
+#/transactions/edit/:id → Edit existing transaction form
 #/upload                → Monzo CSV upload page
 #/budgets               → Budget management
 #/trades                → Trade log with filters
@@ -741,15 +743,17 @@ export async function render(container) {
 ```javascript
 // js/app.js
 const routes = {
-    '':                 () => import('./views/dashboard.js'),
-    'transactions':     () => import('./views/transactions.js'),
-    'upload':           () => import('./views/upload.js'),
-    'budgets':          () => import('./views/budgets.js'),
-    'trades':           () => import('./views/trades.js'),
-    'trades/new':       () => import('./views/trade-form.js'),
-    'analytics':        () => import('./views/trade-analytics.js'),
-    'journal':          () => import('./views/journal.js'),
-    'settings':         () => import('./views/settings.js'),
+    '':                  () => import('./views/dashboard.js'),
+    'transactions':      () => import('./views/transactions.js'),
+    'transactions/new':  () => import('./views/transaction-form.js'),
+    'transactions/edit': () => import('./views/transaction-form.js'),
+    'upload':            () => import('./views/upload.js'),
+    'budgets':           () => import('./views/budgets.js'),
+    'trades':            () => import('./views/trades.js'),
+    'trades/new':        () => import('./views/trade-form.js'),
+    'analytics':         () => import('./views/trade-analytics.js'),
+    'journal':           () => import('./views/journal.js'),
+    'settings':          () => import('./views/settings.js'),
 };
 
 window.addEventListener('hashchange', handleRoute);
@@ -1401,7 +1405,7 @@ def run_migrations(db_path):
 - [x] **1.4** Transaction CRUD API endpoints
 - [x] **1.5** Frontend shell: `index.html`, CSS design system, router, sidebar nav
 - [x] **1.6** Transactions list view with pagination, sorting, filtering
-- [ ] **1.7** Manual transaction add/edit forms
+- [x] **1.7** Manual transaction add/edit forms
 - [ ] **1.8** Category management (list, create custom, assign colours)
 
 ### Phase 2: Monzo Integration

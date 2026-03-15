@@ -398,6 +398,52 @@ tbody tr:last-child td {
   gap: var(--space-3);
 }
 
+/* ---- Form validation ---- */
+.form-group--error input,
+.form-group--error select,
+.form-group--error textarea {
+  border-color: var(--color-danger);
+}
+
+.form-hint {
+  font-size: 12px;
+  color: var(--color-text-muted);
+  margin-top: calc(-1 * var(--space-1));
+}
+
+/* ---- Form actions bar ---- */
+.form-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding-top: var(--space-5);
+  border-top: 1px solid var(--color-border);
+  margin-top: var(--space-5);
+}
+
+.form-actions .btn-danger {
+  margin-left: auto;
+}
+
+/* ---- Collapsible sections ---- */
+details summary {
+  cursor: pointer;
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  font-weight: 500;
+  margin-bottom: var(--space-4);
+  user-select: none;
+}
+
+details summary:hover {
+  color: var(--color-text);
+}
+
+/* ---- Clickable table rows ---- */
+.tx-row-clickable {
+  cursor: pointer;
+}
+
 /* ---- Grid helpers ---- */
 .grid-2 {
   display: grid;

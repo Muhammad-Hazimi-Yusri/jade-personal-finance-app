@@ -8,15 +8,17 @@
 
 // Route map: hash fragment → lazy view loader
 const routes = {
-    '':               () => import('./views/dashboard.js'),
-    'transactions':   () => import('./views/transactions.js'),
-    'upload':         () => import('./views/upload.js'),
-    'budgets':        () => import('./views/budgets.js'),
-    'trades':         () => import('./views/trades.js'),
-    'trades/new':     () => import('./views/trade-form.js'),
-    'analytics':      () => import('./views/trade-analytics.js'),
-    'journal':        () => import('./views/journal.js'),
-    'settings':       () => import('./views/settings.js'),
+    '':                  () => import('./views/dashboard.js'),
+    'transactions':      () => import('./views/transactions.js'),
+    'transactions/new':  () => import('./views/transaction-form.js'),
+    'transactions/edit': () => import('./views/transaction-form.js'),
+    'upload':            () => import('./views/upload.js'),
+    'budgets':           () => import('./views/budgets.js'),
+    'trades':            () => import('./views/trades.js'),
+    'trades/new':        () => import('./views/trade-form.js'),
+    'analytics':         () => import('./views/trade-analytics.js'),
+    'journal':           () => import('./views/journal.js'),
+    'settings':          () => import('./views/settings.js'),
 };
 
 const app = document.getElementById('app');
@@ -43,9 +45,16 @@ async function handleRoute() {
     // Find exact match first, then check prefix matches for nested routes
     let loader = routes[key];
     if (!loader) {
-        // Try prefix: 'trades/123' → 'trades'
-        const prefix = key.split('/')[0];
-        loader = routes[prefix];
+        // Try progressively shorter prefixes:
+        // 'transactions/edit/5' → 'transactions/edit' → 'transactions'
+        const parts = key.split('/');
+        for (let i = parts.length - 1; i >= 1; i--) {
+            const prefix = parts.slice(0, i).join('/');
+            if (routes[prefix]) {
+                loader = routes[prefix];
+                break;
+            }
+        }
     }
     if (!loader) {
         loader = routes[''];  // fallback: dashboard
