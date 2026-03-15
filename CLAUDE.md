@@ -37,7 +37,7 @@ After completing ANY task, you MUST update `README.md`:
 - Python: PEP 8, type hints, docstrings
 - JavaScript: ES6 modules, const/let only, template literals for HTML generation
 - SQL: Uppercase keywords, parameterised queries ALWAYS (never f-strings or .format())
-- All money values as decimals (REAL in SQLite), never integers
+- All monetary values stored as integer pence in SQLite, converted to/from decimal at the API boundary
 - All dates as ISO 8601 strings
 
 ## Workflow
@@ -55,5 +55,5 @@ After completing ANY task, you MUST update `README.md`:
 - Use any CSS framework (no Tailwind, Bootstrap, Pico)
 - Add multi-user auth to the Flask app (Cloudflare Access handles this)
 - Add Caddy, Nginx, or any reverse proxy — cloudflared handles tunnelling
-- Use float/integer for currency — always decimal
+- Use REAL/float for currency storage — always integer pence in SQLite, decimal in API
 - Leave the README out of date after making changes

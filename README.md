@@ -13,6 +13,7 @@
 - [Overview](#overview)
 - [Branding](#branding)
 - [Tech Stack](#tech-stack)
+- [Inspiration & References](#inspiration--references)
 - [Project Structure](#project-structure)
 - [Database Schema](#database-schema)
 - [API Endpoints](#api-endpoints)
@@ -109,6 +110,26 @@ This is a **single-user, self-hosted** application. There is no multi-user suppo
 
 ---
 
+## Inspiration & References
+
+Jade's design draws from these open-source projects:
+
+| Project | What We Borrowed |
+|---------|-----------------|
+| [Firefly III](https://github.com/firefly-iii/firefly-iii) | Rule engine for auto-categorisation, CSV import profiles |
+| [Actual Budget](https://github.com/actualbudget/actual) | Validation that SQLite is excellent for personal finance |
+| [Maybe Finance](https://github.com/maybe-finance/maybe) | Polymorphic Entry model concept (transactions + trades share patterns) |
+| [Ghostfolio](https://github.com/ghostfolio/ghostfolio) | Multi-asset activity schema, trade_type field design |
+| [TradeNote](https://github.com/Eleven-Trading/TradeNote) | MFE tracking, tag groups, daily diary linked to trades |
+| [riccorohl/trading-journal](https://github.com/riccorohl/trading-journal) | Psychology-enriched trade schema, confidence rating, rules_followed_pct |
+
+**What we deliberately didn't adopt:**
+- Double-entry accounting (Firefly III) — overkill for single-user
+- Polymorphic Entry model — keep transactions and trades as separate tables for clarity
+- CRDT sync (Actual Budget) — not needed for single-user
+
+---
+
 ## Project Structure
 
 > **Status Key:** ✅ = exists, 🔲 = planned
@@ -139,6 +160,7 @@ jade/
 │   │   ├── 🔲 upload.py         # Monzo CSV import endpoint (Phase 2)
 │   │   ├── ✅ categories.py     # Category list endpoint (Phase 1.6)
 │   │   ├── 🔲 budgets.py        # Budget CRUD (Phase 3)
+│   │   ├── 🔲 category_rules.py # Category rules CRUD (Phase 2)
 │   │   ├── 🔲 trades.py         # Trading journal CRUD (Phase 4)
 │   │   ├── 🔲 accounts.py       # Trading account management (Phase 4)
 │   │   ├── 🔲 strategies.py     # Strategy management (Phase 4)
@@ -149,6 +171,7 @@ jade/
 │   │   ├── ✅ __init__.py
 │   │   ├── ✅ transactions.py   # Transaction CRUD logic & validation (Phase 1)
 │   │   ├── 🔲 csv_parser.py     # Monzo CSV parsing & validation (Phase 2)
+│   │   ├── 🔲 category_rules.py # Category rules engine (Phase 2)
 │   │   ├── 🔲 trade_calculator.py # R-multiples, win rate, etc. (Phase 4)
 │   │   └── 🔲 analytics.py      # Spending analytics (Phase 3)
 │   │
@@ -211,6 +234,21 @@ PRAGMA busy_timeout = 5000;
 PRAGMA synchronous = NORMAL;
 ```
 
+### Money Storage Convention
+
+All monetary values are stored as **integers in pence** (1/100 of GBP). This avoids IEEE 754 floating-point rounding errors (e.g., `£0.10 + £0.20 ≠ £0.30` with floats).
+
+| Example | Stored Value | Display |
+|---------|-------------|---------|
+| £5.10   | `510`       | £5.10   |
+| -£3.50  | `-350`      | -£3.50  |
+| £0.00   | `0`         | £0.00   |
+| £1,234.56 | `123456`  | £1,234.56 |
+
+- **SQLite type:** `INTEGER` for all money columns
+- **API layer:** Accepts and returns decimal values (e.g., `5.10`). Conversion happens at the service layer boundary
+- **Frontend:** Receives decimals from API, formats with `£` symbol and 2 decimal places
+
 ### Tables
 
 #### `schema_version`
@@ -235,9 +273,9 @@ CREATE TABLE transactions (
     name            TEXT NOT NULL,                          -- Display name / merchant
     emoji           TEXT,                                   -- Monzo emoji
     category        TEXT NOT NULL DEFAULT 'general',        -- snake_case: eating_out, groceries, etc.
-    amount          REAL NOT NULL,                          -- Signed decimal in GBP (negative = debit)
+    amount          INTEGER NOT NULL,                        -- Signed pence (negative = debit). £5.10 = 510
     currency        TEXT NOT NULL DEFAULT 'GBP',
-    local_amount    REAL,                                   -- Foreign currency amount
+    local_amount    INTEGER,                                -- Foreign currency amount in minor units
     local_currency  TEXT,                                   -- Foreign currency code
     notes           TEXT,                                   -- Notes and #tags
     address         TEXT,
@@ -252,6 +290,8 @@ CREATE INDEX idx_transactions_date ON transactions(date);
 CREATE INDEX idx_transactions_category ON transactions(category);
 CREATE INDEX idx_transactions_amount ON transactions(amount);
 ```
+
+> **Migration note:** The `transactions` table was created in `001_initial.sql` with `amount REAL` and `local_amount REAL`. Migration `002_money_to_pence.sql` will convert these columns to `INTEGER` storing pence.
 
 #### `categories`
 
@@ -294,7 +334,7 @@ CREATE TABLE categories (
 CREATE TABLE budgets (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     category    TEXT NOT NULL,                              -- FK to categories.name
-    amount      REAL NOT NULL,                              -- Monthly budget limit in GBP
+    amount      INTEGER NOT NULL,                            -- Monthly budget limit in pence
     period      TEXT NOT NULL DEFAULT 'monthly',            -- monthly, weekly
     start_date  TEXT,                                       -- Optional: budget start date
     is_active   INTEGER NOT NULL DEFAULT 1,
@@ -312,7 +352,7 @@ CREATE TABLE trading_accounts (
     broker      TEXT,
     asset_class TEXT NOT NULL,                              -- stocks, forex, crypto, options, multi
     currency    TEXT NOT NULL DEFAULT 'GBP',
-    initial_balance REAL NOT NULL DEFAULT 0,
+    initial_balance INTEGER NOT NULL DEFAULT 0,              -- Balance in pence
     is_active   INTEGER NOT NULL DEFAULT 1,
     created_at  TEXT NOT NULL DEFAULT (datetime('now'))
 );
@@ -332,27 +372,29 @@ CREATE TABLE trades (
 
     -- Entry
     entry_date          TEXT NOT NULL,                      -- ISO 8601
-    entry_price         REAL NOT NULL,
+    entry_price         INTEGER NOT NULL,                   -- Price in pence
     position_size       REAL NOT NULL,                      -- Quantity/lots/contracts
-    entry_fee           REAL NOT NULL DEFAULT 0,
+    entry_fee           INTEGER NOT NULL DEFAULT 0,         -- Fee in pence
 
     -- Exit (NULL if trade is open)
     exit_date           TEXT,
-    exit_price          REAL,
-    exit_fee            REAL DEFAULT 0,
+    exit_price          INTEGER,                            -- Price in pence
+    exit_fee            INTEGER DEFAULT 0,                  -- Fee in pence
 
     -- Risk Management (set at entry)
-    stop_loss           REAL,                               -- Planned stop loss price
-    take_profit         REAL,                               -- Planned take profit price
-    risk_amount         REAL,                               -- £ amount risked (for R-multiple calc)
+    stop_loss           INTEGER,                            -- Planned stop loss price in pence
+    take_profit         INTEGER,                            -- Planned take profit price in pence
+    risk_amount         INTEGER,                            -- £ amount risked in pence (for R-multiple calc)
 
     -- Calculated fields (updated on close)
-    pnl                 REAL,                               -- Gross P&L in account currency
-    pnl_net             REAL,                               -- Net P&L (after fees)
+    pnl                 INTEGER,                            -- Gross P&L in pence
+    pnl_net             INTEGER,                            -- Net P&L in pence (after fees)
     pnl_percentage      REAL,                               -- % return on position
     r_multiple          REAL,                               -- P&L / risk_amount
-    mae                 REAL,                               -- Max Adverse Excursion (worst drawdown during trade)
-    mfe                 REAL,                               -- Max Favourable Excursion (best unrealised gain)
+    mae                 INTEGER,                            -- Max Adverse Excursion in pence
+    mfe                 INTEGER,                            -- Max Favourable Excursion in pence
+    mae_percentage      REAL,                               -- MAE as % of entry price
+    mfe_percentage      REAL,                               -- MFE as % of entry price
     duration_minutes    INTEGER,                            -- Time in trade
 
     -- Strategy & Context
@@ -362,21 +404,24 @@ CREATE TABLE trades (
     market_condition    TEXT,                               -- trending, ranging, volatile, choppy
     entry_reason        TEXT,                               -- Why you entered
     exit_reason         TEXT,                               -- Why you exited
+    confidence          INTEGER CHECK(confidence BETWEEN 1 AND 10), -- Pre-trade confidence level
 
     -- Psychology (rated 1-5)
     emotion_before      INTEGER CHECK(emotion_before BETWEEN 1 AND 5),
     emotion_during      INTEGER CHECK(emotion_during BETWEEN 1 AND 5),
     emotion_after       INTEGER CHECK(emotion_after BETWEEN 1 AND 5),
-    followed_plan       INTEGER DEFAULT 1,                  -- Boolean: did you follow your trading plan?
-    discipline_notes    TEXT,                               -- What went right/wrong psychologically
+    rules_followed_pct  REAL,                               -- % of trading rules followed (0-100)
+    psychology_notes    TEXT,                               -- What went right/wrong psychologically
+    post_trade_review   TEXT,                               -- Separate reflection: "what I'd do differently"
 
     -- Options-specific fields (NULL for non-options)
     option_type         TEXT,                               -- call, put
-    strike_price        REAL,
+    strike_price        INTEGER,                            -- Strike price in pence
     expiry_date         TEXT,
     implied_volatility  REAL,
 
     -- Meta
+    trade_type          TEXT NOT NULL DEFAULT 'trade',      -- trade, dividend, fee, interest, deposit, withdrawal
     notes               TEXT,
     screenshot_path     TEXT,
     is_open             INTEGER NOT NULL DEFAULT 1,         -- 1 = open, 0 = closed
@@ -412,8 +457,9 @@ CREATE TABLE strategies (
 
 ```sql
 CREATE TABLE tags (
-    id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    name    TEXT NOT NULL UNIQUE
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    name        TEXT NOT NULL UNIQUE,
+    group_name  TEXT NOT NULL DEFAULT 'general'             -- Groups: general, setup, mistake, pattern, market
 );
 
 CREATE TABLE trade_tags (
@@ -448,8 +494,8 @@ CREATE TABLE account_snapshots (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     account_id  INTEGER NOT NULL,
     date        TEXT NOT NULL,                              -- YYYY-MM-DD
-    balance     REAL NOT NULL,
-    equity      REAL,                                       -- Balance + unrealised P&L
+    balance     INTEGER NOT NULL,                            -- Balance in pence
+    equity      INTEGER,                                    -- Balance + unrealised P&L (pence)
     note        TEXT,
     FOREIGN KEY (account_id) REFERENCES trading_accounts(id),
     UNIQUE(account_id, date)
@@ -458,13 +504,54 @@ CREATE TABLE account_snapshots (
 CREATE INDEX idx_snapshots_date ON account_snapshots(date);
 ```
 
+#### `category_rules` *(planned — Phase 2)*
+
+```sql
+CREATE TABLE category_rules (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    field       TEXT NOT NULL,                              -- 'name', 'description', 'notes'
+    operator    TEXT NOT NULL DEFAULT 'contains',           -- 'contains', 'equals', 'starts_with'
+    value       TEXT NOT NULL,                              -- Match pattern, e.g. 'Tesco'
+    category    TEXT NOT NULL,                              -- Target category snake_case
+    priority    INTEGER NOT NULL DEFAULT 0,                 -- Higher = checked first
+    is_active   INTEGER NOT NULL DEFAULT 1,
+    source      TEXT NOT NULL DEFAULT 'manual',             -- 'manual', 'learned' (auto-created on correction)
+    created_at  TEXT NOT NULL DEFAULT (datetime('now')),
+    FOREIGN KEY (category) REFERENCES categories(name)
+);
+
+CREATE INDEX idx_category_rules_active ON category_rules(is_active, priority DESC);
+```
+
+Rules are applied during CSV import to auto-categorise transactions. See [Categorisation Strategy](#categorisation-strategy) below.
+
+#### `import_profiles` *(planned — Phase 2)*
+
+```sql
+CREATE TABLE import_profiles (
+    id              INTEGER PRIMARY KEY AUTOINCREMENT,
+    name            TEXT NOT NULL UNIQUE,                   -- 'Monzo', 'Starling', etc.
+    file_type       TEXT NOT NULL DEFAULT 'csv',            -- csv, json
+    column_mapping  TEXT NOT NULL,                          -- JSON: maps source columns to transaction fields
+    date_format     TEXT,                                   -- strptime format string (NULL = ISO 8601)
+    delimiter       TEXT NOT NULL DEFAULT ',',
+    has_header      INTEGER NOT NULL DEFAULT 1,
+    dedup_field     TEXT,                                   -- Column used for deduplication (e.g. 'Transaction ID')
+    notes           TEXT,
+    is_active       INTEGER NOT NULL DEFAULT 1,
+    created_at      TEXT NOT NULL DEFAULT (datetime('now'))
+);
+```
+
+**Pre-seeded Monzo profile:** A Monzo import profile will be seeded on first run alongside default categories, mapping all 16 Monzo CSV columns to transaction fields.
+
 ---
 
 ## API Endpoints
 
 Base URL: `/api`
 
-All responses use JSON. All monetary values are decimals (not integers/pence). Dates are ISO 8601 strings.
+All responses use JSON. All monetary values are returned as decimals (e.g., `5.10` not `510`) — the API handles pence-to-decimal conversion. Dates are ISO 8601 strings.
 
 ### Transactions (Personal Finance)
 
@@ -915,6 +1002,20 @@ User uploads CSV
   → Return summary: { imported: N, skipped: N, errors: [] }
 ```
 
+### Categorisation Strategy
+
+Transactions are auto-categorised using a three-tier system:
+
+| Tier | Source | Description |
+|------|--------|-------------|
+| **Tier 1: Monzo defaults** | CSV `Category` column | The category assigned by Monzo (e.g., `eating_out`, `groceries`). Used as-is on import. Covers ~90% of transactions. |
+| **Tier 2: Keyword rules** | `category_rules` table | If a rule's keyword matches the transaction name/description, override the Monzo category. Higher-priority rules win. |
+| **Tier 3: Learned corrections** | User manual edits | When a user manually changes a transaction's category, auto-create a keyword rule (`source = 'learned'`) so future imports of the same merchant are categorised correctly. Can be toggled off in Settings. |
+
+**Resolution order:** Tier 3 rules (learned, highest priority) → Tier 2 rules (manual) → Tier 1 (Monzo default).
+
+The system gets smarter over time: correct a category once, and all future imports of that merchant are automatically categorised.
+
 ---
 
 ## Trading Journal
@@ -951,7 +1052,7 @@ User uploads CSV
 | **Largest Loss** | `min(pnl_net)` |
 | **Avg Duration (Winners)** | Mean duration of winning trades |
 | **Avg Duration (Losers)** | Mean duration of losing trades |
-| **Discipline Score** | `trades_where_followed_plan / total_trades × 100` |
+| **Discipline Score** | `avg(rules_followed_pct)` across filtered trade set |
 
 ### Psychology Tracking
 
@@ -1271,8 +1372,9 @@ def run_migrations(db_path):
 
 ```
 001_initial.sql          # Full schema creation
-002_add_budgets.sql      # New feature tables
-003_add_trade_tags.sql   # Schema additions
+002_money_to_pence.sql   # Convert amount/local_amount from REAL to INTEGER pence
+003_add_budgets.sql      # New feature tables
+004_add_trade_tags.sql   # Schema additions
 ```
 
 ### Rules
@@ -1305,11 +1407,12 @@ def run_migrations(db_path):
 ### Phase 2: Monzo Integration
 > CSV upload, parsing, dedup, and import flow.
 
-- [ ] **2.1** CSV parser service with Monzo 16-column format validation
+- [ ] **2.1** CSV parser service with Monzo 16-column format validation and saved import profile
 - [ ] **2.2** Upload API endpoint with file validation (CSV, ≤10MB)
 - [ ] **2.3** Deduplication via `monzo_id`
 - [ ] **2.4** Upload UI with drag-and-drop, progress indicator, import summary
 - [ ] **2.5** Post-import transaction review (highlight new imports)
+- [ ] **2.6** Category rules engine — auto-categorise on import using keyword matching
 
 ### Phase 3: Finance Dashboard
 > Charts, budgets, and spending insights.
@@ -1396,7 +1499,7 @@ This README is the **single source of truth**. When developing:
 6. **Follow the branding** — colours, fonts, spacing as defined
 7. **No external dependencies** beyond what's listed in the tech stack
 8. **SQL queries must use parameterised statements** — never string formatting
-9. **All monetary values are decimals** — never use integers for currency
+9. **All monetary values stored as integer pence in SQLite** — converted to/from decimal at the API boundary
 10. **Test each endpoint** before moving to the next task
 
 ### README Maintenance (CRITICAL)
