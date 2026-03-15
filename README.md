@@ -291,7 +291,7 @@ CREATE INDEX idx_transactions_category ON transactions(category);
 CREATE INDEX idx_transactions_amount ON transactions(amount);
 ```
 
-> **Migration note:** The `transactions` table was created in `001_initial.sql` with `amount REAL` and `local_amount REAL`. Migration `002_money_to_pence.sql` will convert these columns to `INTEGER` storing pence.
+> **Migration note:** The `transactions` table was originally created in `001_initial.sql` with `amount REAL` and `local_amount REAL`. Migration `002_money_to_pence.sql` converts these columns to `INTEGER` storing pence (recreates the table and multiplies existing values by 100).
 
 #### `categories`
 

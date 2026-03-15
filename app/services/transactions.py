@@ -2,11 +2,16 @@
 
 All SQL queries and business logic for transactions live here.
 Route handlers call these functions and never access the database directly.
+
+Money convention: the database stores all monetary values as integer pence.
+This module converts inbound decimals to pence (× 100) and outbound pence
+back to decimals (÷ 100) so the rest of the app only sees decimals.
 """
 
 import math
 import sqlite3
 from datetime import datetime
+from decimal import Decimal, ROUND_HALF_UP
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -28,14 +33,47 @@ _SELECT_COLS = """
     is_income, custom_category, created_at, updated_at
 """
 
+_MONEY_FIELDS: frozenset[str] = frozenset({"amount", "local_amount"})
+
 # ---------------------------------------------------------------------------
 # Private helpers
 # ---------------------------------------------------------------------------
 
 
+def _to_pence(value: object) -> int:
+    """Convert a decimal monetary value to integer pence.
+
+    Uses Decimal for exact arithmetic to avoid float rounding issues.
+
+    Args:
+        value: A number (int, float, or string) representing a decimal amount.
+
+    Returns:
+        Integer pence value (e.g. 5.10 → 510).
+    """
+    d = Decimal(str(value))
+    return int((d * 100).to_integral_value(rounding=ROUND_HALF_UP))
+
+
+def _from_pence(pence: int) -> float:
+    """Convert integer pence to a decimal float for API responses.
+
+    Args:
+        pence: Integer pence value (e.g. 510).
+
+    Returns:
+        Float decimal value (e.g. 5.1).
+    """
+    return pence / 100
+
+
 def _row_to_dict(row: sqlite3.Row) -> dict:
-    """Convert a sqlite3.Row to a plain dict."""
-    return dict(row)
+    """Convert a sqlite3.Row to a plain dict, converting pence to decimal."""
+    d = dict(row)
+    for field in _MONEY_FIELDS:
+        if d.get(field) is not None:
+            d[field] = _from_pence(d[field])
+    return d
 
 
 def _validate_iso_date(value: str) -> None:
@@ -53,14 +91,14 @@ def _validate_iso_date(value: str) -> None:
         raise ValueError(f"date must be a valid ISO 8601 string, got: {value!r}")
 
 
-def _validate_amount(value: object) -> float:
-    """Parse and validate amount. Raises ValueError if not a non-zero number.
+def _validate_amount(value: object) -> int:
+    """Parse, validate, and convert amount from decimal to integer pence.
 
     Args:
-        value: The raw value from the request body.
+        value: The raw decimal value from the request body (e.g. 5.10).
 
     Returns:
-        The amount as a float.
+        The amount as integer pence (e.g. 510).
 
     Raises:
         ValueError: If value is not numeric or is zero.
@@ -71,7 +109,7 @@ def _validate_amount(value: object) -> float:
         raise ValueError("amount must be a number")
     if amount == 0.0:
         raise ValueError("amount must be non-zero")
-    return amount
+    return _to_pence(amount)
 
 
 def _validate_category(db: sqlite3.Connection, category: str) -> None:
@@ -106,8 +144,8 @@ def list_transactions(
     start_date: str | None = None,
     end_date: str | None = None,
     search: str | None = None,
-    min_amount: float | None = None,
-    max_amount: float | None = None,
+    min_amount: float | int | None = None,
+    max_amount: float | int | None = None,
     sort: str = "date",
     order: str = "desc",
 ) -> dict:
@@ -157,10 +195,10 @@ def list_transactions(
         params.extend([pattern, pattern, pattern])
     if min_amount is not None:
         conditions.append("amount >= ?")
-        params.append(min_amount)
+        params.append(_to_pence(min_amount))
     if max_amount is not None:
         conditions.append("amount <= ?")
-        params.append(max_amount)
+        params.append(_to_pence(max_amount))
 
     where_sql = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 
@@ -244,6 +282,11 @@ def create_transaction(db: sqlite3.Connection, data: dict) -> dict:
 
     is_income = 1 if amount > 0 else 0
 
+    # Convert local_amount to pence if provided
+    local_amount_pence = None
+    if data.get("local_amount") is not None:
+        local_amount_pence = _to_pence(data["local_amount"])
+
     cursor = db.execute(
         """
         INSERT INTO transactions (
@@ -261,7 +304,7 @@ def create_transaction(db: sqlite3.Connection, data: dict) -> dict:
             data["category"],
             amount,
             data.get("currency", "GBP"),
-            data.get("local_amount"),
+            local_amount_pence,
             data.get("local_currency"),
             data.get("notes"),
             data.get("address"),
@@ -310,12 +353,15 @@ def update_transaction(
         # Nothing to change — return the row unchanged
         return get_transaction(db, transaction_id)
 
-    # Field-level validation
+    # Field-level validation and pence conversion
     if "date" in updates:
         _validate_iso_date(str(updates["date"]))
     if "amount" in updates:
         updates["amount"] = _validate_amount(updates["amount"])
         updates["is_income"] = 1 if updates["amount"] > 0 else 0
+    if "local_amount" in updates:
+        if updates["local_amount"] is not None:
+            updates["local_amount"] = _to_pence(updates["local_amount"])
     if "name" in updates:
         name = str(updates["name"]).strip()
         if not name:

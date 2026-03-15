@@ -15,9 +15,9 @@ CREATE TABLE IF NOT EXISTS transactions (
     name            TEXT NOT NULL,                          -- Display name / merchant
     emoji           TEXT,                                   -- Monzo emoji
     category        TEXT NOT NULL DEFAULT 'general',        -- snake_case: eating_out, groceries
-    amount          REAL NOT NULL,                          -- Signed decimal GBP (negative = debit)
+    amount          INTEGER NOT NULL,                        -- Signed pence (negative = debit). £5.10 = 510
     currency        TEXT NOT NULL DEFAULT 'GBP',
-    local_amount    REAL,                                   -- Foreign currency amount
+    local_amount    INTEGER,                                -- Foreign currency amount in minor units
     local_currency  TEXT,                                   -- Foreign currency code
     notes           TEXT,                                   -- Notes and #tags
     address         TEXT,

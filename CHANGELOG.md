@@ -13,6 +13,23 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Changed
+
+#### Integer Pence Money Storage
+
+- `app/migrations/001_initial.sql`: `amount` and `local_amount` columns changed from
+  `REAL` to `INTEGER` (pence) for fresh installs
+- `app/migrations/002_money_to_pence.sql`: new migration that recreates the
+  `transactions` table with `INTEGER` money columns and converts existing decimal
+  values to pence (× 100)
+- `app/services/transactions.py`: added `_to_pence()` / `_from_pence()` conversion
+  at the service boundary using `Decimal` for exact arithmetic:
+  - Inbound: API decimal → integer pence before DB write
+  - Outbound: integer pence → decimal float in `_row_to_dict()`
+  - Amount filters (`min_amount`, `max_amount`) converted to pence before querying
+  - `local_amount` converted on create and update
+- `app/routes/transactions.py`: updated docstrings to clarify decimal API convention
+
 ---
 
 ## [0.1.4] — 2026-03-01
@@ -216,7 +233,7 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 #### Phase 1.2 — Database Schema
 - `app/migrations/001_initial.sql`: idempotent (`CREATE TABLE IF NOT EXISTS`) migration creating:
-  - `transactions` table — full Monzo-compatible schema with signed decimal `amount`,
+  - `transactions` table — full Monzo-compatible schema with signed integer pence `amount`,
     `monzo_id` unique constraint for deduplication, `is_income` derived flag,
     `custom_category` override, and ISO 8601 date fields
   - Indexes: `idx_transactions_date`, `idx_transactions_category`, `idx_transactions_amount`

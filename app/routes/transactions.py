@@ -28,8 +28,8 @@ def list_transactions():
         start_date (str): ISO 8601 lower bound on date (inclusive).
         end_date (str): ISO 8601 upper bound on date (inclusive).
         search (str): Search name, notes, and description.
-        min_amount (float): Minimum amount filter (inclusive).
-        max_amount (float): Maximum amount filter (inclusive).
+        min_amount (float): Minimum amount in decimal GBP (inclusive).
+        max_amount (float): Maximum amount in decimal GBP (inclusive).
         sort (str): Sort field, default 'date'.
         order (str): 'asc' or 'desc', default 'desc'.
 
@@ -91,12 +91,13 @@ def create_transaction():
         date (str, required): ISO 8601 date string.
         name (str, required): Display name / merchant.
         amount (float, required): Signed decimal GBP; negative = debit.
+            Stored as integer pence internally.
         category (str, required): snake_case category name.
         monzo_id (str, optional): Monzo transaction ID for deduplication.
         type (str, optional): Transaction type string.
         emoji (str, optional): Monzo emoji.
         currency (str, optional): Currency code, default 'GBP'.
-        local_amount (float, optional): Foreign currency amount.
+        local_amount (float, optional): Foreign currency amount (decimal).
         local_currency (str, optional): Foreign currency code.
         notes (str, optional): Free-text notes.
         address (str, optional): Physical address.
