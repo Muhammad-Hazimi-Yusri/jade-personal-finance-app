@@ -32,6 +32,59 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.1.6] — 2026-03-15
+
+### Added
+
+#### Phase 1.8 — Category Management
+
+- `app/services/categories.py`: service layer with five public functions and
+  private helpers for validation:
+  - `list_categories()` — returns all categories ordered by sort_order then label
+  - `get_category()` — single row lookup by primary key; returns `None` if not found
+  - `create_category()` — INSERT with label/colour/icon validation; auto-generates
+    snake_case `name` from label via `_slugify_label()`; auto-assigns `sort_order`
+    as `MAX(sort_order) + 1`; catches `IntegrityError` for duplicate names
+  - `update_category()` — partial UPDATE of label, colour, icon, sort_order;
+    `name` is immutable once created
+  - `delete_category()` — refuses default categories (`is_default = 1`) and
+    categories in use by transactions (returns count of referencing transactions)
+  - Private helpers: `_validate_label()`, `_validate_colour()`, `_slugify_label()`,
+    `_row_to_dict()` (aliases DB column `label` → API field `display_name`)
+
+- `app/routes/categories.py`: expanded from read-only to full CRUD Blueprint:
+  - `GET /api/categories/` — list all categories (was broken: queried non-existent
+    `display_name` column — fixed by delegating to service layer with alias)
+  - `GET /api/categories/<id>` — single category or 404
+  - `POST /api/categories/` — create custom category; returns 201 or 422
+  - `PUT /api/categories/<id>` — update category; returns 200, 404, or 422
+  - `DELETE /api/categories/<id>` — delete custom category; returns 204, 404,
+    or 409 (default or in-use protection)
+
+- `frontend/js/views/settings.js`: full category management UI replacing stub:
+  - **Categories table**: colour swatch, icon + label, snake_case name (mono),
+    type badge (Default/Custom), Edit/Delete action buttons
+  - **Inline add/edit form**: label input (required), native `<input type="color">`
+    with live swatch preview and hex readout, optional icon input, Save/Cancel
+    buttons; Enter key submits
+  - **Delete flow**: confirmation dialog; handles 409 (in-use) errors with
+    inline error message showing transaction count
+  - **State management**: `formMode` (add/edit/null) and `editId` track form state;
+    table re-renders after every mutation
+
+- `frontend/css/style.css`: new component styles:
+  - `.colour-swatch` — 16px circle with border for displaying category colours
+  - `.colour-input-group` — flex row for colour picker + preview swatch + hex label
+  - `input[type="color"]` — styled native colour picker matching dark theme
+
+### Fixed
+
+- `app/routes/categories.py`: `GET /api/categories/` was querying `display_name`
+  column which does not exist in the database (column is `label`). Fixed by
+  moving query to service layer which aliases `label AS display_name`
+
+---
+
 ## [0.1.5] — 2026-03-15
 
 ### Added
@@ -297,7 +350,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-[Unreleased]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.5...HEAD
+[Unreleased]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.6...HEAD
+[0.1.6]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.3...v0.1.4
 [0.1.3]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.2...v0.1.3
