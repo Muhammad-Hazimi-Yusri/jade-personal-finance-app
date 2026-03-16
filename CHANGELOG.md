@@ -13,6 +13,67 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+---
+
+## [0.2.1] — 2026-03-16
+
+### Added
+
+#### Phase 2.2 — Upload API Endpoint with File Validation
+
+- `app/routes/upload.py`: Blueprint at `/api/upload` with one endpoint:
+  - `POST /api/upload/monzo` — accepts multipart CSV upload (<=10 MB, .csv only);
+    validates headers via `validate_csv()`, parses and deduplicates via
+    `parse_monzo_csv()`, bulk-inserts new transactions in a single DB transaction
+    via `executemany()`; returns `{imported, skipped, errors, total}`
+  - Blueprint-level 413 error handler returns JSON instead of HTML
+  - UTF-8 and UTF-8-BOM decoding support
+- `app/__init__.py`: registered upload blueprint; added `MAX_CONTENT_LENGTH = 10 MB`
+  for Flask-level upload size enforcement
+
+#### Phase 2.3 — Deduplication via `monzo_id`
+
+- Deduplication was already implemented in Phase 2.1's `parse_monzo_csv()` (two-pass
+  batch dedup). Phase 2.2's upload endpoint exercises it end-to-end: re-uploading
+  the same CSV returns `imported: 0, skipped: N`.
+
+---
+
+## [0.2.0] — 2026-03-16
+
+### Added
+
+#### Phase 2.1 — CSV Parser Service & Import Infrastructure
+
+- `app/migrations/003_category_rules_import_profiles.sql`: migration creating two
+  new tables for Phase 2:
+  - `category_rules` — keyword-based auto-categorisation rules with field, operator,
+    value, priority, source (manual/learned), and FK to `categories(name)`
+  - `import_profiles` — saved CSV import profiles with column mapping (JSON),
+    delimiter, date format, dedup field, and header flag
+  - Index: `idx_category_rules_active` on `(is_active, priority DESC)`
+
+- `app/services/csv_parser.py`: Monzo CSV parsing and validation service:
+  - `validate_csv(file_stream)` — validates file is CSV, checks for all 16 expected
+    Monzo headers, counts data rows; extra headers tolerated (Monzo may add columns);
+    returns `{valid, headers, missing_headers, extra_headers, row_count, error}`
+  - `parse_monzo_csv(file_stream, db)` — full parse with two-pass approach: first pass
+    collects all `monzo_id` values for a single batch dedup query, second pass parses
+    each row into a transaction dict with amounts as integer pence; per-row errors
+    collected (don't abort the whole parse); returns `{rows, duplicates, errors, total,
+    new_count, duplicate_count, error_count}`
+  - Private helpers: `_to_pence()` (Decimal conversion), `_normalize_header()` (BOM
+    stripping), `_parse_monzo_date()` (ISO 8601 validation), `_get_monzo_profile()`,
+    `_get_valid_categories()`, `_get_existing_monzo_ids()` (batched at 500),
+    `_parse_monzo_row()` (maps CSV columns → transaction fields, falls back to
+    'general' for unknown categories, appends category split to notes)
+
+- `app/db.py`: Monzo import profile seeding:
+  - `_MONZO_COLUMN_MAPPING` dict mapping all 16 Monzo CSV headers to transaction
+    table fields (Time, Receipt, Category split mapped to `None`)
+  - `seed_import_profiles(app)` — inserts the default Monzo profile using
+    `INSERT OR IGNORE` (idempotent); called from `init_db()` after `seed_categories()`
+
 ### Changed
 
 #### Integer Pence Money Storage
@@ -350,7 +411,9 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-[Unreleased]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.6...HEAD
+[Unreleased]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.2.1...HEAD
+[0.2.1]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.2.0...v0.2.1
+[0.2.0]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.6...v0.2.0
 [0.1.6]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.5...v0.1.6
 [0.1.5]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.4...v0.1.5
 [0.1.4]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.3...v0.1.4

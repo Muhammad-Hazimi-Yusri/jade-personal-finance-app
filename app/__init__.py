@@ -5,7 +5,7 @@ Flask application factory.
 
 import os
 
-__version__ = "0.1.6"
+__version__ = "0.2.1"
 
 from flask import Flask, send_from_directory
 
@@ -28,6 +28,7 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.config.from_mapping(
         DATABASE_PATH=os.environ.get("DATABASE_PATH", "data/jade.db"),
         DEMO_MODE=os.environ.get("DEMO_MODE", "false").lower() == "true",
+        MAX_CONTENT_LENGTH=10 * 1024 * 1024,  # 10 MB upload limit
     )
 
     if test_config is not None:
@@ -46,6 +47,9 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     from .routes.categories import bp as categories_bp
     app.register_blueprint(categories_bp)
+
+    from .routes.upload import bp as upload_bp
+    app.register_blueprint(upload_bp)
 
     # --- Serve frontend ---
     frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")

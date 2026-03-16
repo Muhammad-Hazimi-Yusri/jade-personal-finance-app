@@ -5,6 +5,7 @@ required PRAGMAs set on every connection. Also contains the migration
 runner and the default-category seeder.
 """
 
+import json
 import sqlite3
 from pathlib import Path
 
@@ -61,6 +62,7 @@ def init_db(app: Flask) -> None:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     run_migrations(app)
     seed_categories(app)
+    seed_import_profiles(app)
 
 
 def run_migrations(app: Flask) -> None:
@@ -165,6 +167,71 @@ def seed_categories(app: Flask) -> None:
                 (name, label, colour, icon, sort_order)
                 for name, label, colour, icon, sort_order in _DEFAULT_CATEGORIES
             ],
+        )
+        conn.commit()
+    finally:
+        conn.close()
+
+
+# ---------------------------------------------------------------------------
+# Default Monzo import profile
+# Maps the 16 Monzo CSV column headers to transactions table fields.
+# None values mean the column is ignored during import.
+# ---------------------------------------------------------------------------
+
+_MONZO_COLUMN_MAPPING: dict[str, str | None] = {
+    "Transaction ID": "monzo_id",
+    "Date": "date",
+    "Time": None,                # Ignored — Date column has full ISO 8601 datetime
+    "Type": "type",
+    "Name": "name",
+    "Emoji": "emoji",
+    "Category": "category",
+    "Amount": "amount",
+    "Currency": "currency",
+    "Local amount": "local_amount",
+    "Local currency": "local_currency",
+    "Notes and #tags": "notes",
+    "Address": "address",
+    "Receipt": None,             # Not stored
+    "Description": "description",
+    "Category split": None,      # Appended to notes if non-empty
+}
+
+
+def seed_import_profiles(app: Flask) -> None:
+    """Insert the default Monzo import profile if it doesn't already exist.
+
+    Uses INSERT OR IGNORE so the operation is fully idempotent — safe to
+    call on every startup regardless of existing data.
+
+    Args:
+        app: The Flask application instance (used to read DATABASE_PATH).
+    """
+    db_path = app.config["DATABASE_PATH"]
+    conn = sqlite3.connect(db_path)
+    conn.execute("PRAGMA foreign_keys = ON")
+
+    try:
+        conn.execute(
+            """
+            INSERT OR IGNORE INTO import_profiles
+                (name, file_type, column_mapping, date_format, delimiter,
+                 has_header, dedup_field, notes, is_active)
+            VALUES
+                (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "Monzo",
+                "csv",
+                json.dumps(_MONZO_COLUMN_MAPPING),
+                None,       # NULL = ISO 8601 (Monzo uses ISO 8601)
+                ",",
+                1,
+                "Transaction ID",
+                "Monzo Plus/Premium CSV export (16 columns)",
+                1,
+            ),
         )
         conn.commit()
     finally:

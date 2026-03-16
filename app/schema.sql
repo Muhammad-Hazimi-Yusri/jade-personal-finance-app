@@ -260,7 +260,7 @@ CREATE INDEX idx_snapshots_date ON account_snapshots(date);
 
 
 -- ============================================================
--- CATEGORY RULES (Phase 2) — (planned)
+-- CATEGORY RULES (Phase 2) — (created)
 -- ============================================================
 
 CREATE TABLE category_rules (
@@ -280,7 +280,7 @@ CREATE INDEX idx_category_rules_active ON category_rules(is_active, priority DES
 
 
 -- ============================================================
--- IMPORT PROFILES (Phase 2) — (planned)
+-- IMPORT PROFILES (Phase 2) — (created)
 -- ============================================================
 
 CREATE TABLE import_profiles (

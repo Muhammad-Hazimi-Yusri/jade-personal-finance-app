@@ -152,12 +152,14 @@ jade/
 │   ├── ✅ db.py                 # SQLite connection manager, PRAGMAs
 │   ├── ✅ schema.sql            # Full database schema
 │   ├── ✅ migrations/           # Numbered migration files
-│   │   └── ✅ 001_initial.sql
+│   │   ├── ✅ 001_initial.sql
+│   │   ├── ✅ 002_money_to_pence.sql
+│   │   └── ✅ 003_category_rules_import_profiles.sql
 │   │
 │   ├── ✅ routes/               # API route blueprints
 │   │   ├── ✅ __init__.py
 │   │   ├── ✅ transactions.py   # GET/POST/PUT/DELETE transactions (Phase 1)
-│   │   ├── 🔲 upload.py         # Monzo CSV import endpoint (Phase 2)
+│   │   ├── ✅ upload.py         # Monzo CSV import endpoint (Phase 2)
 │   │   ├── ✅ categories.py     # Category CRUD endpoints (Phase 1.8)
 │   │   ├── 🔲 budgets.py        # Budget CRUD (Phase 3)
 │   │   ├── 🔲 category_rules.py # Category rules CRUD (Phase 2)
@@ -171,7 +173,7 @@ jade/
 │   │   ├── ✅ __init__.py
 │   │   ├── ✅ transactions.py   # Transaction CRUD logic & validation (Phase 1)
 │   │   ├── ✅ categories.py    # Category CRUD logic & validation (Phase 1.8)
-│   │   ├── 🔲 csv_parser.py     # Monzo CSV parsing & validation (Phase 2)
+│   │   ├── ✅ csv_parser.py     # Monzo CSV parsing & validation (Phase 2)
 │   │   ├── 🔲 category_rules.py # Category rules engine (Phase 2)
 │   │   ├── 🔲 trade_calculator.py # R-multiples, win rate, etc. (Phase 4)
 │   │   └── 🔲 analytics.py      # Spending analytics (Phase 3)
@@ -1393,7 +1395,7 @@ def run_migrations(db_path):
 
 ## Development Roadmap
 
-> **Current Phase: Phase 1 — complete**
+> **Current Phase: Phase 2 — Monzo Integration**
 >
 > When completing a task, update this README: check the box `[x]` and update the Project Structure status icons from 🔲 to ✅ for any files created.
 
@@ -1412,9 +1414,9 @@ def run_migrations(db_path):
 ### Phase 2: Monzo Integration
 > CSV upload, parsing, dedup, and import flow.
 
-- [ ] **2.1** CSV parser service with Monzo 16-column format validation and saved import profile
-- [ ] **2.2** Upload API endpoint with file validation (CSV, ≤10MB)
-- [ ] **2.3** Deduplication via `monzo_id`
+- [x] **2.1** CSV parser service with Monzo 16-column format validation and saved import profile
+- [x] **2.2** Upload API endpoint with file validation (CSV, ≤10MB)
+- [x] **2.3** Deduplication via `monzo_id`
 - [ ] **2.4** Upload UI with drag-and-drop, progress indicator, import summary
 - [ ] **2.5** Post-import transaction review (highlight new imports)
 - [ ] **2.6** Category rules engine — auto-categorise on import using keyword matching
