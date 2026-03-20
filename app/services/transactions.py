@@ -146,6 +146,7 @@ def list_transactions(
     search: str | None = None,
     min_amount: float | int | None = None,
     max_amount: float | int | None = None,
+    ids: list[int] | None = None,
     sort: str = "date",
     order: str = "desc",
 ) -> dict:
@@ -162,6 +163,7 @@ def list_transactions(
         search: Free-text search across name, notes, description.
         min_amount: Minimum amount filter (inclusive).
         max_amount: Maximum amount filter (inclusive).
+        ids: Filter to only these transaction IDs.
         sort: Column to sort by; must be in _SORTABLE_FIELDS.
         order: 'asc' or 'desc'.
 
@@ -199,6 +201,10 @@ def list_transactions(
     if max_amount is not None:
         conditions.append("amount <= ?")
         params.append(_to_pence(max_amount))
+    if ids:
+        placeholders = ",".join("?" * len(ids))
+        conditions.append(f"id IN ({placeholders})")
+        params.extend(ids)
 
     where_sql = ("WHERE " + " AND ".join(conditions)) if conditions else ""
 

@@ -50,6 +50,15 @@ def list_transactions():
     if order not in ("asc", "desc"):
         return jsonify({"error": "order must be 'asc' or 'desc'"}), 400
 
+    # Parse optional ids filter (comma-separated integers)
+    ids = None
+    ids_raw = request.args.get("ids")
+    if ids_raw:
+        try:
+            ids = [int(x) for x in ids_raw.split(",") if x.strip()]
+        except ValueError:
+            return jsonify({"error": "ids must be comma-separated integers"}), 400
+
     result = tx_service.list_transactions(
         get_db(),
         page=page,
@@ -61,6 +70,7 @@ def list_transactions():
         search=request.args.get("search"),
         min_amount=request.args.get("min_amount", type=float),
         max_amount=request.args.get("max_amount", type=float),
+        ids=ids,
         sort=sort,
         order=order,
     )

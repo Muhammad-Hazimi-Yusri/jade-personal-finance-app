@@ -76,6 +76,15 @@ function renderUploading() {
 function renderSuccess() {
     const r = state.result;
     const hasErrors = r.errors && r.errors.length > 0;
+    const hasImports = r.imported_ids && r.imported_ids.length > 0;
+
+    // Store imported IDs for the transactions review view
+    if (hasImports) {
+        sessionStorage.setItem('import_review', JSON.stringify({
+            ids: r.imported_ids,
+            reviewMode: true,
+        }));
+    }
 
     let errorsHtml = '';
     if (hasErrors) {
@@ -89,6 +98,8 @@ function renderSuccess() {
             </div>
         `;
     }
+
+    const reviewBtnText = hasImports ? 'Review Imports' : 'View Transactions';
 
     containerEl.innerHTML = `
         <div class="page-header">
@@ -120,7 +131,7 @@ function renderSuccess() {
             ${errorsHtml}
 
             <div class="form-actions mt-4">
-                <a href="#/transactions" class="btn btn-primary">View Transactions</a>
+                <a href="#/transactions" class="btn btn-primary">${reviewBtnText}</a>
                 <button id="btn-another" class="btn btn-ghost">Upload Another</button>
             </div>
         </div>

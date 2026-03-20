@@ -93,6 +93,8 @@ def upload_monzo():
         return jsonify({"error": str(exc)}), 422
 
     # --- Bulk insert new rows ---
+    imported_ids: list[int] = []
+
     try:
         if result["rows"]:
             params = [
@@ -101,6 +103,15 @@ def upload_monzo():
             ]
             db.executemany(_INSERT_SQL, params)
             db.commit()
+
+            # Collect auto-generated IDs of the inserted transactions
+            monzo_ids = [r["monzo_id"] for r in result["rows"]]
+            placeholders = ",".join("?" * len(monzo_ids))
+            id_rows = db.execute(
+                f"SELECT id FROM transactions WHERE monzo_id IN ({placeholders})",
+                monzo_ids,
+            ).fetchall()
+            imported_ids = [r[0] for r in id_rows]
     except sqlite3.IntegrityError as exc:
         db.rollback()
         return jsonify({"error": f"Database integrity error: {exc}"}), 409
@@ -113,4 +124,5 @@ def upload_monzo():
         "skipped": result["duplicate_count"],
         "errors": result["errors"],
         "total": result["total"],
+        "imported_ids": imported_ids,
     }), 200

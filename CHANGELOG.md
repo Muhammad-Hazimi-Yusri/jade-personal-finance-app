@@ -15,6 +15,52 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.2.3] — 2026-03-20
+
+### Added
+
+#### Phase 2.5 — Post-import Transaction Review (Highlight New Imports)
+
+- `app/routes/upload.py`: upload response now includes `imported_ids` array —
+  after bulk insert, queries the database for the auto-generated IDs of the
+  newly inserted transactions using their `monzo_id` values
+
+- `app/services/transactions.py`: `list_transactions()` gains an `ids` parameter
+  (list of ints) — when provided, filters with `WHERE id IN (...)` to return
+  only the specified transactions; enables the post-import review view
+
+- `app/routes/transactions.py`: `GET /api/transactions` accepts an optional `ids`
+  query parameter (comma-separated integers, e.g. `?ids=1,2,3`); validates that
+  all values are integers (returns 400 otherwise); passes to service layer
+
+- `frontend/js/views/upload.js`: on successful import, stores `imported_ids` in
+  `sessionStorage` under key `import_review` with `reviewMode: true`; "View
+  Transactions" button text changes to "Review Imports" when new transactions
+  were imported (unchanged when all rows are duplicates)
+
+- `frontend/js/views/transactions.js`: two-mode post-import review system:
+  - **Review mode** (entered from upload): transactions list is filtered to show
+    only the imported rows via `?ids=...` API filter; sorted by `created_at desc`;
+    green banner reads "Reviewing N imported transactions" with "Show All
+    Transactions" and "Dismiss" buttons
+  - **Highlight mode** (after clicking "Show All"): all transactions shown with
+    normal filters; imported rows get a green left-border and "NEW" badge next to
+    the date; banner changes to "N recently imported transactions highlighted"
+    with a "Dismiss" button
+  - **Dismiss**: clears `sessionStorage`, removes banner, returns to normal view
+  - State persists across page navigations until explicitly dismissed
+  - Module-level `importIds` (Set) and `importReviewMode` (boolean) track state;
+    `sessionStorage` provides persistence across view transitions
+
+- `frontend/css/style.css`: new component styles:
+  - `.import-review-banner` — flex row with green-tinted background, border, and
+    text/actions layout; `--highlight` modifier for the lighter highlight-mode variant
+  - `.tx-row--imported` — 3px solid green left border on first `<td>`
+  - `.badge-new` — small uppercase "NEW" pill badge in success green, 10px font,
+    positioned after the date cell
+
+---
+
 ## [0.2.2] — 2026-03-17
 
 ### Added
@@ -447,7 +493,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-[Unreleased]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.2.2...HEAD
+[Unreleased]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.2.3...HEAD
+[0.2.3]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.2.2...v0.2.3
 [0.2.2]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.6...v0.2.0

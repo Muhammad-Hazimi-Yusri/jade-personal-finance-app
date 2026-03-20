@@ -1,6 +1,7 @@
 /**
- * transactions.js — Transactions list view (Phase 1.6).
+ * transactions.js — Transactions list view (Phase 1.6 + 2.5).
  * Paginated, sortable, filterable transaction list.
+ * Supports post-import review mode with highlighted rows.
  */
 
 import { api } from '../api.js';
@@ -21,6 +22,61 @@ let state = {
 let categoriesCache = [];
 let searchTimer = null;
 
+/** @type {Set<number>|null} IDs of recently imported transactions */
+let importIds = null;
+/** Whether to filter to only imported transactions (true) or show all with highlights (false) */
+let importReviewMode = false;
+
+// ---- Import review helpers ----
+
+function loadImportReview() {
+    const raw = sessionStorage.getItem('import_review');
+    if (!raw) { importIds = null; importReviewMode = false; return; }
+    try {
+        const data = JSON.parse(raw);
+        if (data.ids && data.ids.length > 0) {
+            importIds = new Set(data.ids);
+            importReviewMode = !!data.reviewMode;
+        } else {
+            importIds = null;
+            importReviewMode = false;
+        }
+    } catch {
+        importIds = null;
+        importReviewMode = false;
+    }
+}
+
+function saveImportReview() {
+    if (!importIds || importIds.size === 0) {
+        sessionStorage.removeItem('import_review');
+        return;
+    }
+    sessionStorage.setItem('import_review', JSON.stringify({
+        ids: [...importIds],
+        reviewMode: importReviewMode,
+    }));
+}
+
+function dismissImportReview() {
+    importIds = null;
+    importReviewMode = false;
+    sessionStorage.removeItem('import_review');
+    const banner = document.getElementById('import-review-banner');
+    if (banner) banner.remove();
+    loadTransactions();
+}
+
+function showAllTransactions() {
+    importReviewMode = false;
+    saveImportReview();
+    state.page = 1;
+    state.sort = 'date';
+    state.order = 'desc';
+    renderBanner();
+    loadTransactions();
+}
+
 // ---- Render entry point ----
 
 export async function render(container) {
@@ -28,6 +84,15 @@ export async function render(container) {
     state = { page: 1, sort: 'date', order: 'desc',
               search: '', category: '', startDate: '', endDate: '' };
     categoriesCache = [];
+
+    // Check for pending import review
+    loadImportReview();
+
+    // In review mode, sort by newest first (created_at)
+    if (importReviewMode) {
+        state.sort = 'created_at';
+        state.order = 'desc';
+    }
 
     container.innerHTML = `
         <div class="page-header flex items-center justify-between">
@@ -37,6 +102,8 @@ export async function render(container) {
             </div>
             <a href="#/transactions/new" class="btn btn-primary">+ Add Transaction</a>
         </div>
+
+        <div id="banner-slot"></div>
 
         <!-- Filter bar -->
         <div class="card mb-4" id="filter-card">
@@ -77,11 +144,58 @@ export async function render(container) {
         </div>
     `;
 
+    renderBanner();
     addSortableHeaderStyles();
     attachListeners();
 
     await loadCategories();
     await loadTransactions();
+}
+
+// ---- Import review banner ----
+
+function renderBanner() {
+    const slot = document.getElementById('banner-slot');
+    if (!slot) return;
+
+    // Clear any existing banner
+    slot.innerHTML = '';
+
+    if (!importIds || importIds.size === 0) return;
+
+    const count = importIds.size;
+
+    if (importReviewMode) {
+        slot.innerHTML = `
+            <div class="import-review-banner" id="import-review-banner">
+                <div class="import-review-banner__text">
+                    Reviewing <strong>${count}</strong> imported transaction${count !== 1 ? 's' : ''}
+                </div>
+                <div class="import-review-banner__actions">
+                    <button class="btn btn-ghost btn-sm" id="btn-show-all">Show All Transactions</button>
+                    <button class="btn btn-ghost btn-sm" id="btn-dismiss-review">Dismiss</button>
+                </div>
+            </div>
+        `;
+    } else {
+        slot.innerHTML = `
+            <div class="import-review-banner import-review-banner--highlight" id="import-review-banner">
+                <div class="import-review-banner__text">
+                    <strong>${count}</strong> recently imported transaction${count !== 1 ? 's' : ''} highlighted
+                </div>
+                <div class="import-review-banner__actions">
+                    <button class="btn btn-ghost btn-sm" id="btn-dismiss-review">Dismiss</button>
+                </div>
+            </div>
+        `;
+    }
+
+    // Attach banner button listeners
+    const btnShowAll = document.getElementById('btn-show-all');
+    if (btnShowAll) btnShowAll.addEventListener('click', showAllTransactions);
+
+    const btnDismiss = document.getElementById('btn-dismiss-review');
+    if (btnDismiss) btnDismiss.addEventListener('click', dismissImportReview);
 }
 
 // ---- Data loading ----
@@ -117,6 +231,11 @@ async function loadTransactions() {
     if (state.startDate) params.set('start_date', state.startDate);
     if (state.endDate)   params.set('end_date',   state.endDate);
 
+    // In review mode, filter to only imported IDs
+    if (importReviewMode && importIds && importIds.size > 0) {
+        params.set('ids', [...importIds].join(','));
+    }
+
     try {
         const data = await api.get(`/api/transactions?${params}`);
         renderRows(data.transactions ?? []);
@@ -145,23 +264,33 @@ function renderRows(transactions) {
     if (!tbody) return;
 
     if (transactions.length === 0) {
+        const msg = importReviewMode
+            ? 'No imported transactions found.'
+            : 'No transactions found. Try adjusting your filters.';
         tbody.innerHTML = `
             <tr><td colspan="4">
                 <div class="empty-state" style="min-height: 160px;">
-                    No transactions found. Try adjusting your filters.
+                    ${msg}
                 </div>
             </td></tr>`;
         return;
     }
 
-    tbody.innerHTML = transactions.map(tx => `
-        <tr data-id="${tx.id}" class="tx-row-clickable">
-            <td class="mono text-muted" style="white-space: nowrap;">${formatDateShort(tx.date)}</td>
-            <td>${escHtml(tx.name)}</td>
-            <td><span class="badge badge-neutral">${categoryDisplayName(tx.category)}</span></td>
-            <td class="td-right">${formatCurrency(tx.amount)}</td>
-        </tr>
-    `).join('');
+    const shouldHighlight = importIds && importIds.size > 0 && !importReviewMode;
+
+    tbody.innerHTML = transactions.map(tx => {
+        const isImported = shouldHighlight && importIds.has(tx.id);
+        const rowClass = isImported ? 'tx-row-clickable tx-row--imported' : 'tx-row-clickable';
+        const newBadge = isImported ? '<span class="badge-new">NEW</span>' : '';
+        return `
+            <tr data-id="${tx.id}" class="${rowClass}">
+                <td class="mono text-muted" style="white-space: nowrap;">${formatDateShort(tx.date)}${newBadge}</td>
+                <td>${escHtml(tx.name)}</td>
+                <td><span class="badge badge-neutral">${categoryDisplayName(tx.category)}</span></td>
+                <td class="td-right">${formatCurrency(tx.amount)}</td>
+            </tr>
+        `;
+    }).join('');
 
     // Click row to edit
     tbody.querySelectorAll('tr[data-id]').forEach(row => {
