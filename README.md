@@ -1417,7 +1417,7 @@ def run_migrations(db_path):
 - [x] **2.1** CSV parser service with Monzo 16-column format validation and saved import profile
 - [x] **2.2** Upload API endpoint with file validation (CSV, ≤10MB)
 - [x] **2.3** Deduplication via `monzo_id`
-- [ ] **2.4** Upload UI with drag-and-drop, progress indicator, import summary
+- [x] **2.4** Upload UI with drag-and-drop, progress indicator, import summary
 - [ ] **2.5** Post-import transaction review (highlight new imports)
 - [ ] **2.6** Category rules engine — auto-categorise on import using keyword matching
 

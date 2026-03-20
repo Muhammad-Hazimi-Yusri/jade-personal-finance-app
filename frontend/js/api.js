@@ -81,4 +81,33 @@ export const api = {
     del(path) {
         return request(path, { method: 'DELETE' });
     },
+
+    /**
+     * Upload a file via multipart/form-data.
+     * Uses fetch directly (not request()) because Content-Type must be
+     * omitted so the browser sets the multipart boundary automatically.
+     * @param {string} path - e.g. '/api/upload/monzo'
+     * @param {File}   file - File object from input or drag-and-drop
+     * @returns {Promise<any>} Parsed JSON response body
+     */
+    async upload(path, file) {
+        const form = new FormData();
+        form.append('file', file);
+
+        const res = await fetch(path, { method: 'POST', body: form });
+
+        let body;
+        try {
+            body = await res.json();
+        } catch {
+            body = null;
+        }
+
+        if (!res.ok) {
+            const message = body?.error ?? body?.message ?? `HTTP ${res.status} ${res.statusText}`;
+            throw new Error(message);
+        }
+
+        return body;
+    },
 };

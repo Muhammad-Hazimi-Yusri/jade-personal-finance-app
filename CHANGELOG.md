@@ -15,6 +15,42 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.2.2] — 2026-03-17
+
+### Added
+
+#### Phase 2.4 — Upload UI with Drag-and-Drop, Progress Indicator, Import Summary
+
+- `frontend/js/views/upload.js`: full upload view replacing stub:
+  - **Drag-and-drop zone**: dashed-border drop area with visual feedback on dragover
+    (green border + tinted background); also clickable to open native file picker
+  - **Client-side validation**: checks `.csv` extension and file size ≤ 10 MB before
+    uploading; displays inline error messages for invalid files
+  - **Upload state machine**: `idle` → `uploading` (spinner) → `success` / `error`
+    with clean transitions between states
+  - **Import summary**: 3-stat grid showing imported (green), skipped (amber), and
+    total (blue) counts; row-level errors listed below if any
+  - **Actions**: "View Transactions" navigates to `#/transactions`; "Upload Another"
+    resets the view to idle state; "Try Again" on error resets to idle
+  - **Drag counter technique**: prevents `dragleave` flicker when cursor moves over
+    child elements inside the drop zone
+  - Uses `escHtml()` for all user-derived content in error messages
+
+- `frontend/js/api.js`: added `upload(path, file)` method:
+  - Uses `FormData` and native `fetch()` without `Content-Type` header (browser
+    auto-sets the multipart boundary)
+  - Error handling mirrors the existing `request()` pattern: extracts `error`/`message`
+    from JSON response body on non-2xx status codes
+
+- `frontend/css/style.css`: new upload component styles:
+  - `.drop-zone` with `--dragover` and `--has-file` modifier states
+  - `.file-info` bar showing filename and formatted size
+  - `.upload-spinner` with CSS `@keyframes spin` rotation animation
+  - `.upload-summary__header`, `__stats`, `__errors` for the import results display
+  - `.upload-stat` cards with large monospace values and uppercase labels
+
+---
+
 ## [0.2.1] — 2026-03-16
 
 ### Added
@@ -411,7 +447,8 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
-[Unreleased]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.2.1...HEAD
+[Unreleased]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.2.2...HEAD
+[0.2.2]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.2.1...v0.2.2
 [0.2.1]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.6...v0.2.0
 [0.1.6]: https://github.com/jimi-coding/jade-personal-finance-app/compare/v0.1.5...v0.1.6
