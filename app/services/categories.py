@@ -242,6 +242,17 @@ def delete_category(db: sqlite3.Connection, category_id: int) -> bool:
             f"use this category. Reassign them first."
         )
 
+    # Check if any category rules reference this category
+    rule_count = db.execute(
+        "SELECT COUNT(*) FROM category_rules WHERE category = ?",
+        (existing["name"],),
+    ).fetchone()[0]
+    if rule_count > 0:
+        raise ValueError(
+            f"Cannot delete: {rule_count} category rule{'s' if rule_count != 1 else ''} "
+            f"reference this category. Remove them first."
+        )
+
     db.execute("DELETE FROM categories WHERE id = ?", (category_id,))
     db.commit()
     return True

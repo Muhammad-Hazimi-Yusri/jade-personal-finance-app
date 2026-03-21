@@ -636,7 +636,7 @@ details summary:hover {
 
 .upload-summary__stats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(4, 1fr);
   gap: var(--space-4);
   margin-bottom: var(--space-5);
 }

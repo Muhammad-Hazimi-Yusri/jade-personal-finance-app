@@ -345,7 +345,8 @@ def update_transaction(
     Raises:
         ValueError: If any supplied field fails validation.
     """
-    if get_transaction(db, transaction_id) is None:
+    existing = get_transaction(db, transaction_id)
+    if existing is None:
         return None
 
     # Collect only allowed fields from the request body
@@ -375,6 +376,13 @@ def update_transaction(
         updates["name"] = name
     if "category" in updates:
         _validate_category(db, str(updates["category"]))
+        # Tier 3: auto-create learned rule when user changes category
+        if existing["category"] != str(updates["category"]) and existing.get("name"):
+            try:
+                from app.services.category_rules import create_learned_rule
+                create_learned_rule(db, existing["name"], str(updates["category"]))
+            except Exception:
+                pass  # Non-fatal: don't block the transaction update
 
     # Build SET clause; updated_at is set via SQL literal (no user param)
     fields = list(updates.keys())

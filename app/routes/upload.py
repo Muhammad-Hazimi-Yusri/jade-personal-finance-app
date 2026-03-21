@@ -125,4 +125,5 @@ def upload_monzo():
         "errors": result["errors"],
         "total": result["total"],
         "imported_ids": imported_ids,
+        "rules_applied": result.get("rules_applied", 0),
     }), 200

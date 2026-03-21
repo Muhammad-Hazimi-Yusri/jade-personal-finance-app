@@ -1,8 +1,11 @@
 /**
- * settings.js — Settings view: category management.
+ * settings.js — Settings view: category & category rules management.
  *
  * Displays all categories in a table with colour swatches.
  * Provides inline add/edit form and delete with confirmation.
+ *
+ * Also displays category rules for auto-categorisation on import,
+ * with full CRUD and toggle active/inactive.
  */
 
 import { api } from '../api.js';
@@ -16,6 +19,10 @@ let categories = [];
 let formMode = null;   // null | 'add' | 'edit'
 let editId = null;
 
+let rules = [];
+let ruleFormMode = null;   // null | 'add' | 'edit'
+let ruleEditId = null;
+
 // ---------------------------------------------------------------------------
 // Render
 // ---------------------------------------------------------------------------
@@ -24,7 +31,7 @@ export async function render(container) {
     container.innerHTML = `
         <div class="page-header">
             <h1>Settings</h1>
-            <p>Manage spending categories, colours, and icons.</p>
+            <p>Manage spending categories, colours, and auto-categorisation rules.</p>
         </div>
 
         <!-- Inline add/edit form (hidden by default) -->
@@ -60,7 +67,7 @@ export async function render(container) {
         </div>
 
         <!-- Categories table -->
-        <div class="card">
+        <div class="card mb-5">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="card-title" style="margin-bottom:0">Categories</h2>
                 <button type="button" id="btn-add-cat" class="btn btn-primary">+ Add Category</button>
@@ -82,14 +89,98 @@ export async function render(container) {
                 </table>
             </div>
         </div>
+
+        <!-- Rule add/edit form (hidden by default) -->
+        <div id="rule-form-section" style="display:none">
+            <div class="card mb-5">
+                <h2 id="rule-form-title" class="card-title">Add Rule</h2>
+                <div id="rule-form-error" class="error-state mb-4" style="display:none"></div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="rf-field">Field <span class="text-danger">*</span></label>
+                        <select id="rf-field">
+                            <option value="name">Name</option>
+                            <option value="description">Description</option>
+                            <option value="notes">Notes</option>
+                        </select>
+                        <span class="form-hint">Transaction field to match against</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="rf-operator">Operator</label>
+                        <select id="rf-operator">
+                            <option value="contains">Contains</option>
+                            <option value="equals">Equals</option>
+                            <option value="starts_with">Starts with</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="rf-value">Match Value <span class="text-danger">*</span></label>
+                        <input type="text" id="rf-value" placeholder="e.g. Tesco" maxlength="200">
+                        <span class="form-hint">Text to match (case-insensitive)</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="rf-category">Category <span class="text-danger">*</span></label>
+                        <select id="rf-category">
+                            <option value="">Select category…</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group" style="max-width:200px">
+                    <label for="rf-priority">Priority</label>
+                    <input type="number" id="rf-priority" value="0" min="0" max="999">
+                    <span class="form-hint">Higher = checked first</span>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="btn-save-rule" class="btn btn-primary">Save</button>
+                    <button type="button" id="btn-cancel-rule" class="btn btn-ghost">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Category Rules table -->
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="card-title" style="margin-bottom:0">Category Rules</h2>
+                <button type="button" id="btn-add-rule" class="btn btn-primary">+ Add Rule</button>
+            </div>
+            <p class="text-secondary mb-4" style="margin-top:-8px">
+                Rules auto-categorise imported transactions by matching keywords.
+                Higher-priority rules are checked first.
+            </p>
+            <div id="rule-loading" class="loading">Loading rules…</div>
+            <div id="rule-error" class="error-state" style="display:none"></div>
+            <div id="rule-empty" class="text-muted" style="display:none;padding:var(--space-4) 0">
+                No category rules yet. Add one to start auto-categorising imports.
+            </div>
+            <div id="rule-table-wrap" class="table-container" style="display:none">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Field</th>
+                            <th>Operator</th>
+                            <th>Value</th>
+                            <th>Category</th>
+                            <th style="width:70px">Priority</th>
+                            <th style="width:80px">Source</th>
+                            <th style="width:70px">Active</th>
+                            <th style="width:120px">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="rule-body"></tbody>
+                </table>
+            </div>
+        </div>
     `;
 
     attachListeners(container);
     await loadCategories();
+    await loadRules();
 }
 
 // ---------------------------------------------------------------------------
-// Data loading
+// Data loading — Categories
 // ---------------------------------------------------------------------------
 
 async function loadCategories() {
@@ -115,7 +206,40 @@ async function loadCategories() {
 }
 
 // ---------------------------------------------------------------------------
-// Table rendering
+// Data loading — Rules
+// ---------------------------------------------------------------------------
+
+async function loadRules() {
+    const loading = document.getElementById('rule-loading');
+    const error = document.getElementById('rule-error');
+    const tableWrap = document.getElementById('rule-table-wrap');
+    const empty = document.getElementById('rule-empty');
+
+    loading.style.display = '';
+    error.style.display = 'none';
+    tableWrap.style.display = 'none';
+    empty.style.display = 'none';
+
+    try {
+        const data = await api.get('/api/category-rules/');
+        rules = data.rules;
+        if (rules.length === 0) {
+            loading.style.display = 'none';
+            empty.style.display = '';
+        } else {
+            renderRuleRows();
+            loading.style.display = 'none';
+            tableWrap.style.display = '';
+        }
+    } catch (err) {
+        loading.style.display = 'none';
+        error.style.display = '';
+        error.textContent = `Failed to load rules: ${err.message}`;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Table rendering — Categories
 // ---------------------------------------------------------------------------
 
 function renderCategoryRows() {
@@ -147,7 +271,56 @@ function renderCategoryRows() {
 }
 
 // ---------------------------------------------------------------------------
-// Form handling
+// Table rendering — Rules
+// ---------------------------------------------------------------------------
+
+const _OPERATOR_LABELS = {
+    contains: 'Contains',
+    equals: 'Equals',
+    starts_with: 'Starts with',
+};
+
+function _categoryDisplayName(name) {
+    const cat = categories.find(c => c.name === name);
+    return cat ? (cat.icon ? cat.icon + ' ' : '') + cat.display_name : name;
+}
+
+function renderRuleRows() {
+    const tbody = document.getElementById('rule-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = rules.map(rule => `
+        <tr style="${rule.is_active ? '' : 'opacity:0.5'}">
+            <td>${escHtml(rule.field.charAt(0).toUpperCase() + rule.field.slice(1))}</td>
+            <td>${escHtml(_OPERATOR_LABELS[rule.operator] ?? rule.operator)}</td>
+            <td><strong class="mono" style="font-size:13px">${escHtml(rule.value)}</strong></td>
+            <td>${escHtml(_categoryDisplayName(rule.category))}</td>
+            <td class="mono" style="text-align:right">${rule.priority}</td>
+            <td>
+                ${rule.source === 'learned'
+                    ? '<span class="badge badge-info">Learned</span>'
+                    : '<span class="badge badge-neutral">Manual</span>'}
+            </td>
+            <td>
+                <button class="btn btn-ghost" style="padding:2px 8px;font-size:12px"
+                        data-rule-toggle="${rule.id}">
+                    ${rule.is_active ? 'On' : 'Off'}
+                </button>
+            </td>
+            <td>
+                <div class="flex gap-2">
+                    <button class="btn btn-ghost" style="padding:2px 8px;font-size:12px"
+                            data-rule-edit="${rule.id}">Edit</button>
+                    <button class="btn btn-danger" style="padding:2px 8px;font-size:12px"
+                            data-rule-delete="${rule.id}">Delete</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// ---------------------------------------------------------------------------
+// Form handling — Categories
 // ---------------------------------------------------------------------------
 
 function showForm(mode, cat = null) {
@@ -233,16 +406,129 @@ async function deleteCategory(id) {
 }
 
 // ---------------------------------------------------------------------------
+// Form handling — Rules
+// ---------------------------------------------------------------------------
+
+function _populateCategorySelect() {
+    const select = document.getElementById('rf-category');
+    select.innerHTML = '<option value="">Select category…</option>' +
+        categories.map(c =>
+            `<option value="${escHtml(c.name)}">${c.icon ? escHtml(c.icon) + ' ' : ''}${escHtml(c.display_name)}</option>`
+        ).join('');
+}
+
+function showRuleForm(mode, rule = null) {
+    ruleFormMode = mode;
+    ruleEditId = rule ? rule.id : null;
+
+    const section = document.getElementById('rule-form-section');
+    const title = document.getElementById('rule-form-title');
+    const errorDiv = document.getElementById('rule-form-error');
+
+    title.textContent = mode === 'add' ? 'Add Rule' : 'Edit Rule';
+    errorDiv.style.display = 'none';
+
+    _populateCategorySelect();
+
+    document.getElementById('rf-field').value = rule ? rule.field : 'name';
+    document.getElementById('rf-operator').value = rule ? rule.operator : 'contains';
+    document.getElementById('rf-value').value = rule ? rule.value : '';
+    document.getElementById('rf-category').value = rule ? rule.category : '';
+    document.getElementById('rf-priority').value = rule ? rule.priority : 0;
+
+    section.style.display = '';
+    document.getElementById('rf-value').focus();
+}
+
+function hideRuleForm() {
+    ruleFormMode = null;
+    ruleEditId = null;
+    document.getElementById('rule-form-section').style.display = 'none';
+    document.getElementById('rule-form-error').style.display = 'none';
+}
+
+async function saveRule() {
+    const field = document.getElementById('rf-field').value;
+    const operator = document.getElementById('rf-operator').value;
+    const value = document.getElementById('rf-value').value.trim();
+    const category = document.getElementById('rf-category').value;
+    const priority = parseInt(document.getElementById('rf-priority').value, 10) || 0;
+    const errorDiv = document.getElementById('rule-form-error');
+    const saveBtn = document.getElementById('btn-save-rule');
+
+    // Client-side validation
+    if (!value) {
+        errorDiv.textContent = 'Match value is required.';
+        errorDiv.style.display = '';
+        document.getElementById('rf-value').focus();
+        return;
+    }
+    if (!category) {
+        errorDiv.textContent = 'Category is required.';
+        errorDiv.style.display = '';
+        document.getElementById('rf-category').focus();
+        return;
+    }
+
+    errorDiv.style.display = 'none';
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+
+    try {
+        const body = { field, operator, value, category, priority };
+        if (ruleFormMode === 'add') {
+            await api.post('/api/category-rules/', body);
+        } else {
+            await api.put(`/api/category-rules/${ruleEditId}`, body);
+        }
+        hideRuleForm();
+        await loadRules();
+    } catch (err) {
+        errorDiv.textContent = err.message;
+        errorDiv.style.display = '';
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save';
+    }
+}
+
+async function deleteRule(id) {
+    const rule = rules.find(r => r.id === id);
+    if (!rule) return;
+
+    if (!confirm(`Delete rule matching "${rule.value}"? This cannot be undone.`)) return;
+
+    try {
+        await api.del(`/api/category-rules/${id}`);
+        await loadRules();
+    } catch (err) {
+        const errorDiv = document.getElementById('rule-error');
+        errorDiv.textContent = err.message;
+        errorDiv.style.display = '';
+    }
+}
+
+async function toggleRule(id) {
+    try {
+        await api.post(`/api/category-rules/${id}/toggle`);
+        await loadRules();
+    } catch (err) {
+        const errorDiv = document.getElementById('rule-error');
+        errorDiv.textContent = err.message;
+        errorDiv.style.display = '';
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Event listeners
 // ---------------------------------------------------------------------------
 
 function attachListeners(container) {
-    // Add button
+    // --- Category listeners ---
     container.querySelector('#btn-add-cat').addEventListener('click', () => {
         showForm('add');
     });
 
-    // Save / Cancel
     container.querySelector('#btn-save-cat').addEventListener('click', saveCategory);
     container.querySelector('#btn-cancel-cat').addEventListener('click', hideForm);
 
@@ -270,12 +556,53 @@ function attachListeners(container) {
         }
     });
 
-    // Enter key in form submits
-    const formSection = container.querySelector('#cat-form-section');
-    formSection.addEventListener('keydown', (e) => {
+    // Enter key in category form submits
+    const catFormSection = container.querySelector('#cat-form-section');
+    catFormSection.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') {
             e.preventDefault();
             saveCategory();
+        }
+    });
+
+    // --- Rule listeners ---
+    container.querySelector('#btn-add-rule').addEventListener('click', () => {
+        showRuleForm('add');
+    });
+
+    container.querySelector('#btn-save-rule').addEventListener('click', saveRule);
+    container.querySelector('#btn-cancel-rule').addEventListener('click', hideRuleForm);
+
+    // Rule table delegation: edit / delete / toggle
+    container.querySelector('#rule-body').addEventListener('click', (e) => {
+        const editBtn = e.target.closest('[data-rule-edit]');
+        if (editBtn) {
+            const id = Number(editBtn.dataset.ruleEdit);
+            const rule = rules.find(r => r.id === id);
+            if (rule) showRuleForm('edit', rule);
+            return;
+        }
+
+        const deleteBtn = e.target.closest('[data-rule-delete]');
+        if (deleteBtn) {
+            const id = Number(deleteBtn.dataset.ruleDelete);
+            deleteRule(id);
+            return;
+        }
+
+        const toggleBtn = e.target.closest('[data-rule-toggle]');
+        if (toggleBtn) {
+            const id = Number(toggleBtn.dataset.ruleToggle);
+            toggleRule(id);
+        }
+    });
+
+    // Enter key in rule form submits
+    const ruleFormSection = container.querySelector('#rule-form-section');
+    ruleFormSection.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveRule();
         }
     });
 }

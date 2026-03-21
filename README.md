@@ -162,7 +162,7 @@ jade/
 │   │   ├── ✅ upload.py         # Monzo CSV import endpoint (Phase 2)
 │   │   ├── ✅ categories.py     # Category CRUD endpoints (Phase 1.8)
 │   │   ├── 🔲 budgets.py        # Budget CRUD (Phase 3)
-│   │   ├── 🔲 category_rules.py # Category rules CRUD (Phase 2)
+│   │   ├── ✅ category_rules.py # Category rules CRUD (Phase 2)
 │   │   ├── 🔲 trades.py         # Trading journal CRUD (Phase 4)
 │   │   ├── 🔲 accounts.py       # Trading account management (Phase 4)
 │   │   ├── 🔲 strategies.py     # Strategy management (Phase 4)
@@ -174,7 +174,7 @@ jade/
 │   │   ├── ✅ transactions.py   # Transaction CRUD logic & validation (Phase 1)
 │   │   ├── ✅ categories.py    # Category CRUD logic & validation (Phase 1.8)
 │   │   ├── ✅ csv_parser.py     # Monzo CSV parsing & validation (Phase 2)
-│   │   ├── 🔲 category_rules.py # Category rules engine (Phase 2)
+│   │   ├── ✅ category_rules.py # Category rules engine (Phase 2)
 │   │   ├── 🔲 trade_calculator.py # R-multiples, win rate, etc. (Phase 4)
 │   │   └── 🔲 analytics.py      # Spending analytics (Phase 3)
 │   │
@@ -599,6 +599,17 @@ All responses use JSON. All monetary values are returned as decimals (e.g., `5.1
 | `POST` | `/api/categories` | Create custom category |
 | `PUT` | `/api/categories/:id` | Update category |
 | `DELETE` | `/api/categories/:id` | Delete custom category (not defaults) |
+
+### Category Rules
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/category-rules` | List all rules (optional `?active_only=1`) |
+| `GET` | `/api/category-rules/:id` | Get single rule |
+| `POST` | `/api/category-rules` | Create a category rule |
+| `PUT` | `/api/category-rules/:id` | Update a category rule |
+| `DELETE` | `/api/category-rules/:id` | Delete a category rule |
+| `POST` | `/api/category-rules/:id/toggle` | Toggle active/inactive |
 
 ### Budgets
 
@@ -1419,7 +1430,7 @@ def run_migrations(db_path):
 - [x] **2.3** Deduplication via `monzo_id`
 - [x] **2.4** Upload UI with drag-and-drop, progress indicator, import summary
 - [x] **2.5** Post-import transaction review (highlight new imports)
-- [ ] **2.6** Category rules engine — auto-categorise on import using keyword matching
+- [x] **2.6** Category rules engine — auto-categorise on import using keyword matching
 
 ### Phase 3: Finance Dashboard
 > Charts, budgets, and spending insights.

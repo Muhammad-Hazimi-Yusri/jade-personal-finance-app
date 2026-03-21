@@ -472,6 +472,10 @@ def parse_monzo_csv(
                 "error": str(exc),
             })
 
+    # --- Tier 2 + Tier 3: Apply category rules to override defaults ---
+    from app.services.category_rules import apply_rules
+    parsed_rows, rules_applied_count = apply_rules(db, parsed_rows)
+
     return {
         "rows": parsed_rows,
         "duplicates": duplicates,
@@ -480,4 +484,5 @@ def parse_monzo_csv(
         "new_count": len(parsed_rows),
         "duplicate_count": len(duplicates),
         "error_count": len(errors),
+        "rules_applied": rules_applied_count,
     }

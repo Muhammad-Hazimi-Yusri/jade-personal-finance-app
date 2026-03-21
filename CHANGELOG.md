@@ -15,6 +15,48 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.2.4] — 2026-03-21
+
+### Added
+
+#### Phase 2.6 — Category Rules Engine (Auto-categorise on Import)
+
+- `app/services/category_rules.py`: new service module with full CRUD for
+  category rules, a matching engine (`apply_rules`) that processes transactions
+  against active rules in priority order, and `create_learned_rule` for Tier 3
+  auto-rule creation when users manually change a transaction's category
+
+- `app/routes/category_rules.py`: REST API blueprint at `/api/category-rules`
+  with 6 endpoints — list (filterable by active), get, create, update, delete,
+  and toggle active/inactive
+
+- `app/services/csv_parser.py`: after parsing rows, applies category rules via
+  `apply_rules()` to override Monzo defaults; adds `rules_applied` count to
+  the parse result
+
+- `app/routes/upload.py`: upload response now includes `rules_applied` count
+  so the frontend can display how many transactions were auto-categorised
+
+- `app/services/transactions.py`: `update_transaction()` now auto-creates a
+  learned rule (Tier 3) when a user changes a transaction's category, so
+  future imports of the same merchant are auto-categorised
+
+- `app/services/categories.py`: `delete_category()` now checks for category
+  rules referencing the category before allowing deletion (FK protection)
+
+- `frontend/js/views/settings.js`: full category rules management UI added
+  below the categories table — inline add/edit form with field, operator,
+  value, category dropdown, and priority inputs; rules table with toggle,
+  edit, and delete actions; empty state when no rules exist
+
+- `frontend/js/views/upload.js`: import summary stats grid now shows a 4th
+  "Auto-categorised" stat in jade green
+
+- `frontend/css/style.css`: upload summary stats grid expanded from 3 to 4
+  columns
+
+---
+
 ## [0.2.3] — 2026-03-20
 
 ### Added

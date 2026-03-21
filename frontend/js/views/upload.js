@@ -126,6 +126,10 @@ function renderSuccess() {
                     <span class="upload-stat__value text-info">${r.total}</span>
                     <span class="upload-stat__label">Total Rows</span>
                 </div>
+                <div class="upload-stat">
+                    <span class="upload-stat__value" style="color:var(--color-primary)">${r.rules_applied ?? 0}</span>
+                    <span class="upload-stat__label">Auto-categorised</span>
+                </div>
             </div>
 
             ${errorsHtml}
