@@ -154,14 +154,15 @@ jade/
 │   ├── ✅ migrations/           # Numbered migration files
 │   │   ├── ✅ 001_initial.sql
 │   │   ├── ✅ 002_money_to_pence.sql
-│   │   └── ✅ 003_category_rules_import_profiles.sql
+│   │   ├── ✅ 003_category_rules_import_profiles.sql
+│   │   └── ✅ 004_budgets.sql
 │   │
 │   ├── ✅ routes/               # API route blueprints
 │   │   ├── ✅ __init__.py
 │   │   ├── ✅ transactions.py   # GET/POST/PUT/DELETE transactions (Phase 1)
 │   │   ├── ✅ upload.py         # Monzo CSV import endpoint (Phase 2)
 │   │   ├── ✅ categories.py     # Category CRUD endpoints (Phase 1.8)
-│   │   ├── 🔲 budgets.py        # Budget CRUD (Phase 3)
+│   │   ├── ✅ budgets.py        # Budget CRUD (Phase 3)
 │   │   ├── ✅ category_rules.py # Category rules CRUD (Phase 2)
 │   │   ├── 🔲 trades.py         # Trading journal CRUD (Phase 4)
 │   │   ├── 🔲 accounts.py       # Trading account management (Phase 4)
@@ -175,6 +176,7 @@ jade/
 │   │   ├── ✅ categories.py    # Category CRUD logic & validation (Phase 1.8)
 │   │   ├── ✅ csv_parser.py     # Monzo CSV parsing & validation (Phase 2)
 │   │   ├── ✅ category_rules.py # Category rules engine (Phase 2)
+│   │   ├── ✅ budgets.py        # Budget CRUD logic & validation (Phase 3)
 │   │   ├── 🔲 trade_calculator.py # R-multiples, win rate, etc. (Phase 4)
 │   │   └── 🔲 analytics.py      # Spending analytics (Phase 3)
 │   │
@@ -620,6 +622,7 @@ All responses use JSON. All monetary values are returned as decimals (e.g., `5.1
 | `POST` | `/api/budgets` | Create budget |
 | `PUT` | `/api/budgets/:id` | Update budget |
 | `DELETE` | `/api/budgets/:id` | Delete budget |
+| `POST` | `/api/budgets/:id/toggle` | Toggle active/inactive |
 
 ### Trades
 
@@ -1391,8 +1394,9 @@ def run_migrations(db_path):
 ```
 001_initial.sql          # Full schema creation
 002_money_to_pence.sql   # Convert amount/local_amount from REAL to INTEGER pence
-003_add_budgets.sql      # New feature tables
-004_add_trade_tags.sql   # Schema additions
+003_category_rules_import_profiles.sql  # Category rules + import profiles
+004_budgets.sql          # Budgets table (Phase 3)
+005_add_trade_tags.sql   # Schema additions
 ```
 
 ### Rules
@@ -1406,7 +1410,7 @@ def run_migrations(db_path):
 
 ## Development Roadmap
 
-> **Current Phase: Phase 2 — Monzo Integration**
+> **Current Phase: Phase 3 — Finance Dashboard**
 >
 > When completing a task, update this README: check the box `[x]` and update the Project Structure status icons from 🔲 to ✅ for any files created.
 
@@ -1435,7 +1439,7 @@ def run_migrations(db_path):
 ### Phase 3: Finance Dashboard
 > Charts, budgets, and spending insights.
 
-- [ ] **3.1** Budget CRUD API and UI
+- [x] **3.1** Budget CRUD API and UI
 - [ ] **3.2** Dashboard API: balance, income/expenses, budget status
 - [ ] **3.3** Finance dashboard view with Chart.js integration
 - [ ] **3.4** Spending by category donut chart

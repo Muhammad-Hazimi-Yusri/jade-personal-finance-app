@@ -15,6 +15,31 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.1] — 2026-03-21
+
+### Added
+
+#### Phase 3.1 — Budget CRUD API and UI
+
+- `app/migrations/004_budgets.sql`: budgets table with `UNIQUE(category, period)`
+  constraint, FK to `categories.name`, amount stored as integer pence
+
+- `app/services/budgets.py`: budget CRUD service with pence boundary conversion,
+  validation (positive amount, valid category FK, period enum), toggle active,
+  and `get_budget_status()` endpoint computing current-period spending per
+  category by joining budgets with transactions
+
+- `app/routes/budgets.py`: REST API blueprint at `/api/budgets` with 7 endpoints
+  — list (filterable by active), status (current month/week spending), get,
+  create, update, delete, and toggle active/inactive
+
+- `frontend/js/views/budgets.js`: full budget management UI replacing the stub —
+  inline add/edit form with category dropdown, amount input (pounds), period
+  selector, start date; sortable table with category colour swatches, formatted
+  amounts, active toggle, edit and delete actions
+
+---
+
 ## [0.2.4] — 2026-03-21
 
 ### Added
