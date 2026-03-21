@@ -15,6 +15,28 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.2] — 2026-03-21
+
+### Added
+
+#### Phase 3.2 — Dashboard API: balance, income/expenses, budget status
+
+- `app/services/dashboard.py`: dashboard aggregation service with six data
+  sections — summary KPIs (balance, income, expenses, net, savings rate),
+  income vs expenses by month, spending by category with colours, cash flow
+  timeline, budget status (reuses `get_budget_status()`), and recent
+  transactions. Uses `date <` (exclusive end) for correct timestamp
+  boundaries. All money converted from pence to decimal at the service layer.
+
+- `app/routes/dashboard.py`: blueprint at `/api/dashboard` with single
+  `GET /finance` endpoint. Accepts optional `months` (1–24, default 6) and
+  `limit` (1–50, default 10) query parameters. Returns all dashboard data
+  in a single JSON response.
+
+- Registered dashboard blueprint in `app/__init__.py`.
+
+---
+
 ## [0.3.1] — 2026-03-21
 
 ### Added

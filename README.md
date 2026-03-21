@@ -168,7 +168,7 @@ jade/
 │   │   ├── 🔲 accounts.py       # Trading account management (Phase 4)
 │   │   ├── 🔲 strategies.py     # Strategy management (Phase 4)
 │   │   ├── 🔲 reports.py        # Aggregated analytics & stats (Phase 5)
-│   │   └── 🔲 dashboard.py      # Dashboard summary data (Phase 3)
+│   │   └── ✅ dashboard.py       # Dashboard summary data (Phase 3)
 │   │
 │   ├── ✅ services/             # Business logic layer
 │   │   ├── ✅ __init__.py
@@ -178,7 +178,7 @@ jade/
 │   │   ├── ✅ category_rules.py # Category rules engine (Phase 2)
 │   │   ├── ✅ budgets.py        # Budget CRUD logic & validation (Phase 3)
 │   │   ├── 🔲 trade_calculator.py # R-multiples, win rate, etc. (Phase 4)
-│   │   └── 🔲 analytics.py      # Spending analytics (Phase 3)
+│   │   └── ✅ dashboard.py       # Dashboard summary data (Phase 3)
 │   │
 │   └── ✅ utils/                # Shared utilities
 │       ├── ✅ __init__.py
@@ -1440,7 +1440,7 @@ def run_migrations(db_path):
 > Charts, budgets, and spending insights.
 
 - [x] **3.1** Budget CRUD API and UI
-- [ ] **3.2** Dashboard API: balance, income/expenses, budget status
+- [x] **3.2** Dashboard API: balance, income/expenses, budget status
 - [ ] **3.3** Finance dashboard view with Chart.js integration
 - [ ] **3.4** Spending by category donut chart
 - [ ] **3.5** Income vs expenses bar chart (monthly, 6-month view)
