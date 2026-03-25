@@ -743,3 +743,121 @@ details summary:hover {
   vertical-align: middle;
   font-family: var(--font-sans);
 }
+
+/* ============================================================
+   Dashboard (Phase 3.3)
+   ============================================================ */
+
+/* ---- KPI cards ---- */
+.kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(5, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.kpi-card {
+  background: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4) var(--space-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.kpi-card__label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+}
+
+.kpi-card__value {
+  font-size: 22px;
+  font-weight: 700;
+  font-family: var(--font-mono);
+  color: var(--color-text);
+}
+
+/* ---- Dashboard section grid ---- */
+.dash-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-5);
+  margin-bottom: var(--space-5);
+}
+
+/* ---- Budget progress bars ---- */
+.budget-progress-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.budget-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.budget-bar__header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 13px;
+}
+
+.budget-bar__name {
+  font-weight: 500;
+  color: var(--color-text);
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.budget-bar__pct {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--color-text-secondary);
+}
+
+.budget-bar__track {
+  height: 8px;
+  background: var(--color-surface-light);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.budget-bar__fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.5s ease;
+}
+
+/* ---- Chart containers ---- */
+.chart-wrap {
+  position: relative;
+  width: 100%;
+}
+
+.chart-wrap canvas {
+  width: 100% !important;
+}
+
+/* ---- Responsive ---- */
+@media (max-width: 900px) {
+  .kpi-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .dash-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 600px) {
+  .kpi-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}

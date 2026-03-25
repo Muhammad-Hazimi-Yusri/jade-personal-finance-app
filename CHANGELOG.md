@@ -15,6 +15,35 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.3] — 2026-03-25
+
+### Added
+
+#### Phase 3.3 — Finance dashboard view with Chart.js integration
+
+- `frontend/js/views/dashboard.js`: full dashboard view replacing stub. Fetches
+  `/api/dashboard/finance` and `/api/categories/` in parallel. Renders five
+  sections: KPI summary cards (balance, income, expenses, net, savings rate),
+  income vs expenses grouped bar chart, budget progress bars with colour-coded
+  thresholds (green/warning/danger at 80%/100%), spending by category doughnut
+  chart using category colours from the database, cash flow area chart with
+  jade-green fill, and a clickable recent transactions table.
+
+- `frontend/css/style.css`: dashboard-specific CSS — `.kpi-grid` (5-column
+  responsive grid), `.kpi-card` with label/value layout, `.dash-grid` (2-column
+  chart layout), `.budget-bar` progress components with track/fill, `.chart-wrap`
+  for Chart.js canvas containers, responsive breakpoints at 900px and 600px.
+
+- Chart.js dark-mode defaults: muted axis text, border colour matching design
+  system, Inter font family. All three charts (bar, doughnut, line) configured
+  with dark-mode-appropriate colours and tooltips with £ formatting.
+
+- Empty and loading states: spinner while fetching, friendly empty message when
+  no transactions exist, per-section empty handling for spending chart and
+  budget bars.
+
+---
+
 ## [0.3.2] — 2026-03-21
 
 ### Added
