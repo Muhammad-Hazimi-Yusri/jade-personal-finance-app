@@ -5,7 +5,7 @@ Flask application factory.
 
 import os
 
-__version__ = "0.3.5"
+__version__ = "0.3.6"
 
 from flask import Flask, send_from_directory
 

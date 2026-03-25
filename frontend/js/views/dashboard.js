@@ -12,6 +12,7 @@ let data = null;
 let categories = [];
 let charts = {};
 let selectedMonths = 6;
+let selectedCfMonths = 6;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -49,6 +50,7 @@ function _formatAxis(value) {
 export async function render(container) {
     _destroyCharts();
     selectedMonths = 6;
+    selectedCfMonths = 6;
 
     container.innerHTML = `
         <div class="page-header">
@@ -97,10 +99,19 @@ export async function render(container) {
                     <p id="spending-empty" class="text-muted" style="display:none;text-align:center;margin-top:16px;">No spending this month.</p>
                 </div>
                 <div class="card">
-                    <div class="card-title">Cash Flow</div>
+                    <div class="card-header-row">
+                        <div class="card-title">Cash Flow</div>
+                        <div class="period-selector" id="cf-period-selector">
+                            <button class="period-btn" data-months="3">3m</button>
+                            <button class="period-btn period-btn--active" data-months="6">6m</button>
+                            <button class="period-btn" data-months="12">12m</button>
+                        </div>
+                    </div>
                     <div class="chart-wrap">
                         <canvas id="chart-cash-flow"></canvas>
                     </div>
+                    <p id="cf-empty" class="text-muted" style="display:none;text-align:center;margin-top:16px;">No cash flow data for this period.</p>
+                    <div id="cf-summary-stats" class="cf-summary-stats"></div>
                 </div>
             </div>
 
@@ -182,6 +193,31 @@ async function loadDashboard() {
                 renderIncomeExpensesChart(data.income_vs_expenses);
             } catch (err) {
                 console.error('Failed to refresh income/expenses chart:', err);
+            }
+        });
+
+        // Period selector for cash flow chart
+        document.getElementById('cf-period-selector')?.addEventListener('click', async (e) => {
+            const btn = e.target.closest('.period-btn');
+            if (!btn) return;
+            const months = Number(btn.dataset.months);
+            if (months === selectedCfMonths) return;
+
+            selectedCfMonths = months;
+
+            // Update active button
+            document.querySelectorAll('#cf-period-selector .period-btn').forEach(b =>
+                b.classList.toggle('period-btn--active', Number(b.dataset.months) === months)
+            );
+
+            // Re-fetch and re-render only the cash flow chart
+            try {
+                const freshData = await api.get(`/dashboard/finance?months=${months}`);
+                data.cash_flow = freshData.cash_flow;
+                charts.cashFlow?.destroy();
+                renderCashFlowChart(data.cash_flow);
+            } catch (err) {
+                console.error('Failed to refresh cash flow chart:', err);
             }
         });
 
@@ -521,34 +557,97 @@ function renderSpendingChart(spending) {
 }
 
 function renderCashFlowChart(cashFlow) {
-    const ctx = document.getElementById('chart-cash-flow').getContext('2d');
+    const canvas = document.getElementById('chart-cash-flow');
+    const emptyEl = document.getElementById('cf-empty');
+    const summaryEl = document.getElementById('cf-summary-stats');
+
+    // Empty state
+    const allZero = !cashFlow || cashFlow.every(d => d.income === 0 && d.expenses === 0);
+    if (allZero) {
+        canvas.style.display = 'none';
+        emptyEl.style.display = '';
+        summaryEl.style.display = 'none';
+        return;
+    }
+    canvas.style.display = '';
+    emptyEl.style.display = 'none';
+    summaryEl.style.display = '';
+
+    // Derived data
+    const totalInflow = cashFlow.reduce((s, d) => s + d.income, 0);
+    const totalOutflow = cashFlow.reduce((s, d) => s + d.expenses, 0);
+    const netChange = totalInflow - totalOutflow;
+    const endBalance = cashFlow[cashFlow.length - 1].cumulative;
+
+    // Per-bar colours: green for positive net, red for negative
+    const netBg = cashFlow.map(d =>
+        d.net >= 0 ? 'rgba(16, 185, 129, 0.6)' : 'rgba(239, 68, 68, 0.6)'
+    );
+    const netBorder = cashFlow.map(d =>
+        d.net >= 0 ? '#10B981' : '#EF4444'
+    );
+
+    const ctx = canvas.getContext('2d');
 
     charts.cashFlow = new Chart(ctx, {
-        type: 'line',
+        type: 'bar',
         data: {
             labels: cashFlow.map(d => d.month),
-            datasets: [{
-                label: 'Net Cash Flow',
-                data: cashFlow.map(d => d.net),
-                borderColor: '#00A86B',
-                backgroundColor: 'rgba(0, 168, 107, 0.15)',
-                fill: true,
-                tension: 0.3,
-                pointRadius: 4,
-                pointBackgroundColor: '#00A86B',
-                pointBorderColor: '#1A1D27',
-                pointBorderWidth: 2,
-            }],
+            datasets: [
+                {
+                    label: 'Net',
+                    data: cashFlow.map(d => d.net),
+                    backgroundColor: netBg,
+                    borderColor: netBorder,
+                    borderWidth: 1,
+                    borderRadius: 4,
+                    order: 2,
+                },
+                {
+                    label: 'Cumulative',
+                    type: 'line',
+                    data: cashFlow.map(d => d.cumulative),
+                    borderColor: '#3B82F6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+                    fill: true,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#3B82F6',
+                    pointBorderColor: '#1A1D27',
+                    pointBorderWidth: 2,
+                    borderWidth: 2,
+                    order: 1,
+                },
+            ],
         },
         options: {
             responsive: true,
             maintainAspectRatio: true,
             aspectRatio: 1.5,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
             plugins: {
-                legend: { display: false },
+                legend: {
+                    position: 'top',
+                    labels: { usePointStyle: true, padding: 16 },
+                },
                 tooltip: {
+                    mode: 'index',
+                    intersect: false,
                     callbacks: {
-                        label: ctx => `Net: £${ctx.parsed.y.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`,
+                        label(tipCtx) {
+                            const val = tipCtx.parsed.y;
+                            const formatted = '£' + val.toLocaleString('en-GB', { minimumFractionDigits: 2 });
+                            return `${tipCtx.dataset.label}: ${formatted}`;
+                        },
+                        afterBody(tipItems) {
+                            const idx = tipItems[0].dataIndex;
+                            const d = cashFlow[idx];
+                            const fmt = v => '£' + v.toLocaleString('en-GB', { minimumFractionDigits: 2 });
+                            return `Income: ${fmt(d.income)}\nExpenses: −${fmt(d.expenses)}`;
+                        },
                     },
                 },
             },
@@ -563,4 +662,24 @@ function renderCashFlowChart(cashFlow) {
             },
         },
     });
+
+    // Summary stats below chart
+    summaryEl.innerHTML = `
+        <div class="cf-stat">
+            <span class="cf-stat__label">Total Inflow</span>
+            <span class="cf-stat__value text-success">${formatCurrency(totalInflow, false)}</span>
+        </div>
+        <div class="cf-stat">
+            <span class="cf-stat__label">Total Outflow</span>
+            <span class="cf-stat__value text-danger">${formatCurrency(-totalOutflow, false)}</span>
+        </div>
+        <div class="cf-stat">
+            <span class="cf-stat__label">Net Change</span>
+            <span class="cf-stat__value" style="color:${netChange >= 0 ? '#10B981' : '#EF4444'}">${formatCurrency(netChange, false)}</span>
+        </div>
+        <div class="cf-stat">
+            <span class="cf-stat__label">End Balance</span>
+            <span class="cf-stat__value" style="color:${endBalance >= 0 ? '#10B981' : '#EF4444'}">${formatCurrency(endBalance, false)}</span>
+        </div>
+    `;
 }

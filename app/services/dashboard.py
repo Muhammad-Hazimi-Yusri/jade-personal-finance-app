@@ -226,11 +226,12 @@ def get_cash_flow(
     months: int = 6,
     today: date | None = None,
 ) -> list[dict]:
-    """Monthly net amounts for an area chart.
+    """Monthly cash flow breakdown for an area/bar chart.
 
     Returns:
-        List of dicts ``{month, net}`` ordered oldest-first.
-        Empty months are filled with ``net: 0.0``.
+        List of dicts ``{month, income, expenses, net, cumulative}``
+        ordered oldest-first.  Empty months are filled with zeroes.
+        ``cumulative`` is the running sum of ``net`` across the period.
     """
     today = today or date.today()
     boundaries = _month_boundaries(today, months)
@@ -241,7 +242,10 @@ def get_cash_flow(
         """
         SELECT
             strftime('%Y-%m', date) AS month_key,
-            COALESCE(SUM(amount), 0) AS net
+            COALESCE(SUM(CASE WHEN amount > 0 THEN amount
+                         ELSE 0 END), 0) AS income,
+            COALESCE(SUM(CASE WHEN amount < 0 THEN ABS(amount)
+                         ELSE 0 END), 0) AS expenses
         FROM transactions
         WHERE date >= ? AND date < ?
         GROUP BY month_key
@@ -250,14 +254,24 @@ def get_cash_flow(
         (range_start, range_end),
     ).fetchall()
 
-    by_key: dict[str, int] = {r["month_key"]: r["net"] for r in rows}
+    by_key: dict[str, dict] = {
+        r["month_key"]: {"income": r["income"], "expenses": r["expenses"]}
+        for r in rows
+    }
 
     result: list[dict] = []
+    cumulative_pence = 0
     for label, start_iso, _ in boundaries:
         key = start_iso[:7]
+        data = by_key.get(key, {"income": 0, "expenses": 0})
+        net_pence = data["income"] - data["expenses"]
+        cumulative_pence += net_pence
         result.append({
             "month": label,
-            "net": _from_pence(by_key.get(key, 0)),
+            "income": _from_pence(data["income"]),
+            "expenses": _from_pence(data["expenses"]),
+            "net": _from_pence(net_pence),
+            "cumulative": _from_pence(cumulative_pence),
         })
 
     return result

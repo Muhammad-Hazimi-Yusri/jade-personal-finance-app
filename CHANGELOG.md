@@ -15,6 +15,27 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.6] — 2026-03-25
+
+### Changed
+
+#### Phase 3.6 — Enhanced cash flow area chart
+
+- Replaced basic single-line area chart with a mixed bar+line chart: monthly
+  net cash flow as green/red bars (positive/negative) with a cumulative running
+  balance line overlay in blue.
+- Backend `get_cash_flow()` now returns `income`, `expenses`, `net`, and
+  `cumulative` per month (previously only `net`).
+- Added 3m/6m/12m period selector that re-fetches data from the API.
+- Added summary stats below chart: total inflow, total outflow, net change,
+  and end balance for the selected period.
+- Tooltips now show net, cumulative, income, and expenses simultaneously on
+  hover using Chart.js index interaction mode.
+- Added empty state handling when no cash flow data exists for the selected
+  period.
+
+---
+
 ## [0.3.5] — 2026-03-25
 
 ### Changed
