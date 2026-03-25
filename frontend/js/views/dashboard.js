@@ -34,6 +34,12 @@ function _barColour(pct) {
     return '#10B981';
 }
 
+function _budgetStatusLabel(pct) {
+    if (pct >= 100) return { level: 'over', label: 'Over', cls: 'badge-danger' };
+    if (pct >= 80)  return { level: 'warning', label: 'Caution', cls: 'badge-warning' };
+    return { level: 'on-track', label: null, cls: '' };
+}
+
 function _destroyCharts() {
     Object.values(charts).forEach(c => c?.destroy());
     charts = {};
@@ -273,20 +279,51 @@ function renderBudgetBars(budgetStatus) {
         return;
     }
 
-    container.innerHTML = budgetStatus.map(b => {
+    // Sort by urgency — highest percentage first
+    const sorted = [...budgetStatus].sort((a, b) => b.percentage - a.percentage);
+
+    // Summary counts
+    const total = sorted.length;
+    const onTrack = sorted.filter(b => b.percentage < 80).length;
+    const caution = sorted.filter(b => b.percentage >= 80 && b.percentage < 100).length;
+    const over    = sorted.filter(b => b.percentage >= 100).length;
+
+    const summaryBadges = [
+        caution > 0 ? `<span class="badge badge-warning">${caution} caution</span>` : '',
+        over > 0    ? `<span class="badge badge-danger">${over} over</span>` : '',
+    ].filter(Boolean).join('');
+
+    const summaryHtml = `
+        <div class="budget-summary">
+            <span class="budget-summary__text">${onTrack} of ${total} on track</span>
+            <span class="budget-summary__badges">${summaryBadges}</span>
+        </div>
+    `;
+
+    const barsHtml = sorted.map(b => {
         const pct = Math.min(b.percentage, 100);
         const colour = _barColour(b.percentage);
         const catColour = _categoryColour(b.category);
-        const warn = b.percentage >= 100 ? ' ⚠' : '';
+        const status = _budgetStatusLabel(b.percentage);
+        const modifier = status.level !== 'on-track' ? ` budget-bar--${status.level}` : '';
+        const badge = status.label
+            ? ` <span class="badge ${escHtml(status.cls)}">${escHtml(status.label)}</span>`
+            : '';
+        const remainingText = b.remaining >= 0
+            ? `£${b.remaining.toFixed(2)} left`
+            : `£${Math.abs(b.remaining).toFixed(2)} over`;
 
         return `
-            <div class="budget-bar">
+            <div class="budget-bar${modifier}">
                 <div class="budget-bar__header">
                     <span class="budget-bar__name">
                         <span class="colour-swatch" style="background:${escHtml(catColour)}"></span>
-                        ${escHtml(_categoryDisplayName(b.category))}
+                        ${escHtml(_categoryDisplayName(b.category))}${badge}
                     </span>
-                    <span class="budget-bar__pct">£${b.spent.toFixed(2)} / £${b.budget_amount.toFixed(2)} (${b.percentage}%${warn})</span>
+                    <span class="budget-bar__amounts">
+                        <span class="budget-bar__spent">£${b.spent.toFixed(2)} / £${b.budget_amount.toFixed(2)} (${b.percentage}%)</span>
+                        <span class="budget-bar__remaining">${remainingText}</span>
+                    </span>
                 </div>
                 <div class="budget-bar__track">
                     <div class="budget-bar__fill" style="width:${pct}%;background:${colour}"></div>
@@ -294,6 +331,8 @@ function renderBudgetBars(budgetStatus) {
             </div>
         `;
     }).join('');
+
+    container.innerHTML = summaryHtml + barsHtml;
 }
 
 // ---------------------------------------------------------------------------

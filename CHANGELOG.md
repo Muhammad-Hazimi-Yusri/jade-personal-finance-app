@@ -15,6 +15,23 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.7] — 2026-03-25
+
+### Changed
+
+#### Phase 3.7 — Budget progress bars with warnings at 80%/100%
+
+- Added warning badges on budget bars: "Caution" (amber) at 80% and "Over"
+  (red) at 100%+ thresholds.
+- Budgets now sorted by urgency — highest spend percentage appears first.
+- Added summary headline above bars showing "X of Y on track" with caution/over
+  count badges.
+- Each bar now shows "£X left" or "£X over" beneath the spent/budget amounts.
+- Added subtle pulse animation on over-budget bar fills to draw attention.
+- Removed plain ⚠ emoji in favour of styled badge indicators.
+
+---
+
 ## [0.3.6] — 2026-03-25
 
 ### Changed

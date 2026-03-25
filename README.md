@@ -1445,7 +1445,7 @@ def run_migrations(db_path):
 - [x] **3.4** Spending by category donut chart
 - [x] **3.5** Income vs expenses bar chart (monthly, 6-month view)
 - [x] **3.6** Cash flow area chart
-- [ ] **3.7** Budget progress bars with warnings at 80%/100%
+- [x] **3.7** Budget progress bars with warnings at 80%/100%
 - [ ] **3.8** Spending reports with period comparison (this month vs last)
 - [ ] **3.9** Date range selector component
 
