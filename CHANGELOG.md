@@ -15,6 +15,22 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.4] — 2026-03-25
+
+### Changed
+
+#### Phase 3.4 — Spending by category donut chart
+
+- Enhanced spending doughnut chart with grand total displayed in the centre
+  hollow, percentage in tooltips alongside pound amounts, and a clickable
+  category breakdown list replacing the default Chart.js legend. Each list
+  item shows a colour swatch, category name, amount, and percentage. Clicking
+  a row toggles that segment's visibility on the chart.
+- `app/services/dashboard.py`: `get_spending_by_category()` now returns a
+  `percentage` field (0–100) for each category item, computed server-side.
+
+---
+
 ## [0.3.3] — 2026-03-25
 
 ### Added

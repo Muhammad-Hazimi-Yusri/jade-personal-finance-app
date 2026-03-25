@@ -179,7 +179,7 @@ def get_spending_by_category(
     categories table to include display_name and colour.
 
     Returns:
-        List of dicts ``{category, display_name, colour, total}``
+        List of dicts ``{category, display_name, colour, total, percentage}``
         ordered by total descending.  Empty list if no debits this month.
     """
     today = today or date.today()
@@ -204,12 +204,17 @@ def get_spending_by_category(
         (month_start, month_end),
     ).fetchall()
 
+    grand_total = sum(r["total"] for r in rows)
+
     return [
         {
             "category": r["category"],
             "display_name": r["display_name"],
             "colour": r["colour"],
             "total": _from_pence(r["total"]),
+            "percentage": round(r["total"] / grand_total * 100, 1)
+            if grand_total > 0
+            else 0.0,
         }
         for r in rows
     ]

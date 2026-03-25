@@ -82,6 +82,7 @@ export async function render(container) {
                     <div class="chart-wrap">
                         <canvas id="chart-spending"></canvas>
                     </div>
+                    <div id="spending-breakdown" class="spending-breakdown"></div>
                     <p id="spending-empty" class="text-muted" style="display:none;text-align:center;margin-top:16px;">No spending this month.</p>
                 </div>
                 <div class="card">
@@ -320,12 +321,40 @@ function renderIncomeExpensesChart(incomeExpenses) {
 function renderSpendingChart(spending) {
     const canvas = document.getElementById('chart-spending');
     const emptyEl = document.getElementById('spending-empty');
+    const breakdownEl = document.getElementById('spending-breakdown');
 
     if (!spending || spending.length === 0) {
         canvas.style.display = 'none';
+        breakdownEl.style.display = 'none';
         emptyEl.style.display = '';
         return;
     }
+
+    const grandTotal = spending.reduce((sum, d) => sum + d.total, 0);
+
+    // Inline plugin: draw grand total in the doughnut centre
+    const centerTotalPlugin = {
+        id: 'centerTotal',
+        beforeDraw(chart) {
+            const { ctx, chartArea: { top, bottom, left, right } } = chart;
+            const centreX = (left + right) / 2;
+            const centreY = (top + bottom) / 2;
+
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+
+            ctx.font = "600 20px 'Inter', system-ui, sans-serif";
+            ctx.fillStyle = '#F3F4F6';
+            ctx.fillText(`£${grandTotal.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`, centreX, centreY - 10);
+
+            ctx.font = "400 11px 'Inter', system-ui, sans-serif";
+            ctx.fillStyle = '#9CA3AF';
+            ctx.fillText('Total spent', centreX, centreY + 12);
+
+            ctx.restore();
+        },
+    };
 
     const ctx = canvas.getContext('2d');
 
@@ -346,17 +375,39 @@ function renderSpendingChart(spending) {
             aspectRatio: 1.2,
             cutout: '65%',
             plugins: {
-                legend: {
-                    position: 'bottom',
-                    labels: { usePointStyle: true, padding: 12, font: { size: 11 } },
-                },
+                legend: { display: false },
                 tooltip: {
                     callbacks: {
-                        label: ctx => `${ctx.label}: £${ctx.parsed.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`,
+                        label(tipCtx) {
+                            const amount = tipCtx.parsed.toLocaleString('en-GB', { minimumFractionDigits: 2 });
+                            const pct = spending[tipCtx.dataIndex]?.percentage ?? 0;
+                            return `${tipCtx.label}: £${amount} (${pct}%)`;
+                        },
                     },
                 },
             },
         },
+        plugins: [centerTotalPlugin],
+    });
+
+    // Breakdown list (replaces legend)
+    breakdownEl.innerHTML = spending.map((d, i) => `
+        <div class="spending-breakdown__item" data-index="${i}">
+            <span class="spending-breakdown__swatch" style="background:${escHtml(d.colour || '#6B7280')}"></span>
+            <span class="spending-breakdown__name">${escHtml(d.display_name || d.category)}</span>
+            <span class="spending-breakdown__amount">${formatCurrency(-d.total)}</span>
+            <span class="spending-breakdown__pct">${d.percentage}%</span>
+        </div>
+    `).join('');
+
+    // Click-to-toggle segments
+    breakdownEl.querySelectorAll('.spending-breakdown__item').forEach(item => {
+        item.addEventListener('click', () => {
+            const idx = Number(item.dataset.index);
+            charts.spending.toggleDataVisibility(idx);
+            charts.spending.update();
+            item.classList.toggle('spending-breakdown__item--hidden');
+        });
     });
 }
 
