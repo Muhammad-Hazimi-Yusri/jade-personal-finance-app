@@ -15,6 +15,24 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.5] — 2026-03-25
+
+### Changed
+
+#### Phase 3.5 — Enhanced income vs expenses bar chart
+
+- Enhanced income vs expenses bar chart with a net income/loss line overlay
+  (jade green, computed as income − expenses per month), a 3m/6m/12m period
+  selector that re-fetches data from the API, and summary stats below the chart
+  showing total income, total expenses, and average monthly net for the period.
+- Current month bars are highlighted with higher opacity for visual distinction.
+- Tooltips now show all three values (income, expenses, net) simultaneously on
+  hover using Chart.js index interaction mode.
+- Added empty state handling when no income or expense data exists for the
+  selected period.
+
+---
+
 ## [0.3.4] — 2026-03-25
 
 ### Changed

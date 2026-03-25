@@ -11,6 +11,7 @@ import { formatCurrency, formatDate, escHtml } from '../utils.js';
 let data = null;
 let categories = [];
 let charts = {};
+let selectedMonths = 6;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -47,6 +48,7 @@ function _formatAxis(value) {
 
 export async function render(container) {
     _destroyCharts();
+    selectedMonths = 6;
 
     container.innerHTML = `
         <div class="page-header">
@@ -65,10 +67,19 @@ export async function render(container) {
 
             <div class="dash-grid">
                 <div class="card">
-                    <div class="card-title">Income vs Expenses</div>
+                    <div class="card-header-row">
+                        <div class="card-title">Income vs Expenses</div>
+                        <div class="period-selector" id="ie-period-selector">
+                            <button class="period-btn" data-months="3">3m</button>
+                            <button class="period-btn period-btn--active" data-months="6">6m</button>
+                            <button class="period-btn" data-months="12">12m</button>
+                        </div>
+                    </div>
                     <div class="chart-wrap">
                         <canvas id="chart-income-expenses"></canvas>
                     </div>
+                    <p id="ie-empty" class="text-muted" style="display:none;text-align:center;margin-top:16px;">No income or expense data for this period.</p>
+                    <div id="ie-summary-stats" class="ie-summary-stats"></div>
                 </div>
                 <div class="card">
                     <div class="card-title">Budget Progress</div>
@@ -148,6 +159,31 @@ async function loadDashboard() {
         renderBudgetBars(data.budget_status);
         renderRecentTransactions(data.recent_transactions);
         renderCharts(data);
+
+        // Period selector for income vs expenses chart
+        document.getElementById('ie-period-selector')?.addEventListener('click', async (e) => {
+            const btn = e.target.closest('.period-btn');
+            if (!btn) return;
+            const months = Number(btn.dataset.months);
+            if (months === selectedMonths) return;
+
+            selectedMonths = months;
+
+            // Update active button
+            document.querySelectorAll('#ie-period-selector .period-btn').forEach(b =>
+                b.classList.toggle('period-btn--active', Number(b.dataset.months) === months)
+            );
+
+            // Re-fetch and re-render only the income/expenses chart
+            try {
+                const freshData = await api.get(`/dashboard/finance?months=${months}`);
+                data.income_vs_expenses = freshData.income_vs_expenses;
+                charts.incomeExpenses?.destroy();
+                renderIncomeExpensesChart(data.income_vs_expenses);
+            } catch (err) {
+                console.error('Failed to refresh income/expenses chart:', err);
+            }
+        });
 
     } catch (err) {
         loading.style.display = 'none';
@@ -264,7 +300,38 @@ function renderCharts(data) {
 }
 
 function renderIncomeExpensesChart(incomeExpenses) {
-    const ctx = document.getElementById('chart-income-expenses').getContext('2d');
+    const canvas = document.getElementById('chart-income-expenses');
+    const emptyEl = document.getElementById('ie-empty');
+    const summaryEl = document.getElementById('ie-summary-stats');
+
+    // Empty state
+    const allZero = !incomeExpenses || incomeExpenses.every(d => d.income === 0 && d.expenses === 0);
+    if (allZero) {
+        canvas.style.display = 'none';
+        emptyEl.style.display = '';
+        summaryEl.style.display = 'none';
+        return;
+    }
+    canvas.style.display = '';
+    emptyEl.style.display = 'none';
+    summaryEl.style.display = '';
+
+    // Derived data
+    const netValues = incomeExpenses.map(d => d.income - d.expenses);
+    const totalIncome = incomeExpenses.reduce((s, d) => s + d.income, 0);
+    const totalExpenses = incomeExpenses.reduce((s, d) => s + d.expenses, 0);
+    const avgMonthlyNet = netValues.reduce((s, v) => s + v, 0) / netValues.length;
+    const last = incomeExpenses.length - 1;
+
+    // Current month highlight — last bar gets higher opacity
+    const incBg = incomeExpenses.map((_, i) =>
+        i === last ? 'rgba(16, 185, 129, 0.85)' : 'rgba(16, 185, 129, 0.5)'
+    );
+    const expBg = incomeExpenses.map((_, i) =>
+        i === last ? 'rgba(239, 68, 68, 0.85)' : 'rgba(239, 68, 68, 0.5)'
+    );
+
+    const ctx = canvas.getContext('2d');
 
     charts.incomeExpenses = new Chart(ctx, {
         type: 'bar',
@@ -274,18 +341,35 @@ function renderIncomeExpensesChart(incomeExpenses) {
                 {
                     label: 'Income',
                     data: incomeExpenses.map(d => d.income),
-                    backgroundColor: 'rgba(16, 185, 129, 0.6)',
+                    backgroundColor: incBg,
                     borderColor: '#10B981',
                     borderWidth: 1,
                     borderRadius: 4,
+                    order: 2,
                 },
                 {
                     label: 'Expenses',
                     data: incomeExpenses.map(d => d.expenses),
-                    backgroundColor: 'rgba(239, 68, 68, 0.6)',
+                    backgroundColor: expBg,
                     borderColor: '#EF4444',
                     borderWidth: 1,
                     borderRadius: 4,
+                    order: 2,
+                },
+                {
+                    label: 'Net',
+                    type: 'line',
+                    data: netValues,
+                    borderColor: '#00A86B',
+                    backgroundColor: 'rgba(0, 168, 107, 0.08)',
+                    fill: false,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#00A86B',
+                    pointBorderColor: '#1A1D27',
+                    pointBorderWidth: 2,
+                    borderWidth: 2,
+                    order: 1,
                 },
             ],
         },
@@ -293,20 +377,29 @@ function renderIncomeExpensesChart(incomeExpenses) {
             responsive: true,
             maintainAspectRatio: true,
             aspectRatio: 1.5,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
             plugins: {
                 legend: {
                     position: 'top',
                     labels: { usePointStyle: true, padding: 16 },
                 },
                 tooltip: {
+                    mode: 'index',
+                    intersect: false,
                     callbacks: {
-                        label: ctx => `${ctx.dataset.label}: £${ctx.parsed.y.toLocaleString('en-GB', { minimumFractionDigits: 2 })}`,
+                        label(tipCtx) {
+                            const val = tipCtx.parsed.y;
+                            const formatted = '£' + val.toLocaleString('en-GB', { minimumFractionDigits: 2 });
+                            return `${tipCtx.dataset.label}: ${formatted}`;
+                        },
                     },
                 },
             },
             scales: {
                 y: {
-                    beginAtZero: true,
                     grid: { color: '#2E3140' },
                     ticks: { callback: _formatAxis },
                 },
@@ -316,6 +409,22 @@ function renderIncomeExpensesChart(incomeExpenses) {
             },
         },
     });
+
+    // Summary stats below chart
+    summaryEl.innerHTML = `
+        <div class="ie-stat">
+            <span class="ie-stat__label">Total Income</span>
+            <span class="ie-stat__value text-success">${formatCurrency(totalIncome, false)}</span>
+        </div>
+        <div class="ie-stat">
+            <span class="ie-stat__label">Total Expenses</span>
+            <span class="ie-stat__value text-danger">${formatCurrency(-totalExpenses, false)}</span>
+        </div>
+        <div class="ie-stat">
+            <span class="ie-stat__label">Avg Monthly Net</span>
+            <span class="ie-stat__value" style="color:${avgMonthlyNet >= 0 ? '#10B981' : '#EF4444'}">${formatCurrency(avgMonthlyNet, false)}</span>
+        </div>
+    `;
 }
 
 function renderSpendingChart(spending) {
