@@ -1072,6 +1072,27 @@ details summary:hover {
   font-family: var(--font-mono);
 }
 
+/* ---- Spending reports ---- */
+.report-kpi-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+}
+
+.change-positive { color: var(--color-danger); }
+.change-negative { color: var(--color-success); }
+.change-neutral  { color: var(--color-text-muted); }
+
+.report-table td .colour-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
   .kpi-grid {
@@ -1086,7 +1107,8 @@ details summary:hover {
 }
 
 @media (max-width: 600px) {
-  .kpi-grid {
+  .kpi-grid,
+  .report-kpi-grid {
     grid-template-columns: repeat(2, 1fr);
   }
 }

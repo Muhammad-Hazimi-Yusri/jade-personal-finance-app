@@ -15,6 +15,28 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.8] — 2026-03-26
+
+### Added
+
+#### Phase 3.8 — Spending reports with period comparison
+
+- New **Spending Reports** view at `#/reports` comparing this month vs last
+  month spending by category.
+- Backend: `GET /api/reports/spending` endpoint with period comparison query
+  using conditional aggregation — returns per-category current/previous
+  totals, change amounts, and percentage variance.
+- Frontend: summary KPI cards (current month, last month, change with
+  directional arrow), horizontal grouped bar chart (current vs previous per
+  category, top 10), and full category breakdown table with change indicators.
+- Colour-coded change indicators: green when spending decreased (good),
+  red when spending increased (bad), muted when unchanged.
+- "Reports" nav link added under Finance section in sidebar.
+- New service layer `app/services/reports.py` and route blueprint
+  `app/routes/reports.py`.
+
+---
+
 ## [0.3.7] — 2026-03-25
 
 ### Changed

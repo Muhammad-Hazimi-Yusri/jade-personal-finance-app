@@ -167,7 +167,7 @@ jade/
 │   │   ├── 🔲 trades.py         # Trading journal CRUD (Phase 4)
 │   │   ├── 🔲 accounts.py       # Trading account management (Phase 4)
 │   │   ├── 🔲 strategies.py     # Strategy management (Phase 4)
-│   │   ├── 🔲 reports.py        # Aggregated analytics & stats (Phase 5)
+│   │   ├── ✅ reports.py        # Spending reports & comparisons (Phase 3)
 │   │   └── ✅ dashboard.py       # Dashboard summary data (Phase 3)
 │   │
 │   ├── ✅ services/             # Business logic layer
@@ -177,6 +177,7 @@ jade/
 │   │   ├── ✅ csv_parser.py     # Monzo CSV parsing & validation (Phase 2)
 │   │   ├── ✅ category_rules.py # Category rules engine (Phase 2)
 │   │   ├── ✅ budgets.py        # Budget CRUD logic & validation (Phase 3)
+│   │   ├── ✅ reports.py        # Spending reports & comparisons (Phase 3)
 │   │   ├── 🔲 trade_calculator.py # R-multiples, win rate, etc. (Phase 4)
 │   │   └── ✅ dashboard.py       # Dashboard summary data (Phase 3)
 │   │
@@ -204,6 +205,7 @@ jade/
 │   │       ├── ✅ transaction-form.js
 │   │       ├── ✅ upload.js
 │   │       ├── ✅ budgets.js
+│   │       ├── ✅ reports.js
 │   │       ├── ✅ trades.js
 │   │       ├── ✅ trade-form.js
 │   │       ├── ✅ trade-analytics.js
@@ -1446,7 +1448,7 @@ def run_migrations(db_path):
 - [x] **3.5** Income vs expenses bar chart (monthly, 6-month view)
 - [x] **3.6** Cash flow area chart
 - [x] **3.7** Budget progress bars with warnings at 80%/100%
-- [ ] **3.8** Spending reports with period comparison (this month vs last)
+- [x] **3.8** Spending reports with period comparison (this month vs last)
 - [ ] **3.9** Date range selector component
 
 ### Phase 4: Trading Journal
