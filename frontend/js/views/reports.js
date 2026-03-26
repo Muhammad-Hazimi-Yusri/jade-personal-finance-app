@@ -6,6 +6,7 @@
 
 import { api } from '../api.js';
 import { formatCurrency, escHtml } from '../utils.js';
+import { createDateRangeSelector, getPresetRange } from '../components/date-range-selector.js';
 
 // Module state
 let data = null;
@@ -60,6 +61,8 @@ export async function render(container) {
             <p>Compare spending between periods</p>
         </div>
 
+        <div id="report-date-range-mount"></div>
+
         <div id="report-loading" class="loading">Loading report…</div>
         <div id="report-error" class="error-state" style="display:none"></div>
         <div id="report-empty" class="empty-state" style="display:none">
@@ -96,22 +99,39 @@ export async function render(container) {
         </div>
     `;
 
-    await loadReport();
+    // Mount date range selector
+    const mount = document.getElementById('report-date-range-mount');
+    const selector = createDateRangeSelector({
+        onChange: async (startDate, endDate, label) => {
+            await refreshReport(startDate, endDate);
+        },
+        initialPreset: 'this_month',
+        id: 'report-date-range',
+    });
+    mount.appendChild(selector);
+
+    // Initial load with default preset
+    const initial = getPresetRange('this_month');
+    await loadReport(initial.startDate, initial.endDate);
 }
 
 // ---------------------------------------------------------------------------
 // Data loading
 // ---------------------------------------------------------------------------
 
-async function loadReport() {
+async function loadReport(startDate, endDate) {
     const loading = document.getElementById('report-loading');
     const error   = document.getElementById('report-error');
     const content = document.getElementById('report-content');
     const empty   = document.getElementById('report-empty');
 
+    const params = startDate && endDate
+        ? `?start_date=${startDate}&end_date=${endDate}`
+        : '';
+
     try {
         const [reportData, catData] = await Promise.all([
-            api.get('/reports/spending'),
+            api.get(`/reports/spending${params}`),
             api.get('/categories/'),
         ]);
 
@@ -123,9 +143,11 @@ async function loadReport() {
         // Empty state: no categories at all
         if (!data.categories || data.categories.length === 0) {
             empty.style.display = '';
+            content.style.display = 'none';
             return;
         }
 
+        empty.style.display = 'none';
         content.style.display = '';
 
         renderKPIs(data);
@@ -136,6 +158,35 @@ async function loadReport() {
         loading.style.display = 'none';
         error.style.display = '';
         error.textContent = err.message || 'Failed to load spending report.';
+    }
+}
+
+async function refreshReport(startDate, endDate) {
+    const content = document.getElementById('report-content');
+    const empty   = document.getElementById('report-empty');
+
+    const params = `?start_date=${startDate}&end_date=${endDate}`;
+
+    try {
+        const reportData = await api.get(`/reports/spending${params}`);
+        data = reportData;
+
+        if (!data.categories || data.categories.length === 0) {
+            empty.style.display = '';
+            content.style.display = 'none';
+            return;
+        }
+
+        empty.style.display = 'none';
+        content.style.display = '';
+
+        _destroyChart();
+        renderKPIs(data);
+        renderChart(data);
+        renderTable(data);
+
+    } catch (err) {
+        console.error('Failed to refresh report:', err);
     }
 }
 

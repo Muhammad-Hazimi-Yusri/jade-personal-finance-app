@@ -18,6 +18,9 @@ def finance_dashboard():
 
     Query params:
         months (int): Number of months for chart history, default 6, max 24.
+            Ignored when start_date/end_date are provided.
+        start_date (str): ISO 8601 date for range start (inclusive).
+        end_date (str): ISO 8601 date for range end (inclusive).
         limit (int): Number of recent transactions, default 10, max 50.
 
     Returns:
@@ -26,10 +29,16 @@ def finance_dashboard():
     """
     months = request.args.get("months", 6, type=int)
     limit = request.args.get("limit", 10, type=int)
+    start_date = request.args.get("start_date", None, type=str)
+    end_date = request.args.get("end_date", None, type=str)
 
     try:
         data = dashboard_service.get_finance_dashboard(
-            get_db(), months=months, limit=limit
+            get_db(),
+            months=months,
+            start_date=start_date,
+            end_date=end_date,
+            limit=limit,
         )
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 422

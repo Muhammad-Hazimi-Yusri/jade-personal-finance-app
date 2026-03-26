@@ -18,16 +18,24 @@ def spending_report():
 
     Query params:
         period (str): Comparison type, default ``"month"``.
-            Currently only ``"month"`` is supported.
+            Ignored when start_date/end_date are provided.
+        start_date (str): ISO 8601 date for "current" period start.
+        end_date (str): ISO 8601 date for "current" period end.
+            Previous period is auto-computed as the same duration shifted back.
 
     Returns:
         JSON with current_period, previous_period, categories, and totals.
     """
     period = request.args.get("period", "month", type=str)
+    start_date = request.args.get("start_date", None, type=str)
+    end_date = request.args.get("end_date", None, type=str)
 
     try:
         data = reports_service.get_spending_comparison(
-            get_db(), period=period
+            get_db(),
+            period=period,
+            start_date=start_date,
+            end_date=end_date,
         )
     except ValueError as exc:
         return jsonify({"error": str(exc)}), 422

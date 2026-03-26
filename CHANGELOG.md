@@ -15,6 +15,35 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.3.9] — 2026-03-26
+
+### Added
+
+#### Phase 3.9 — Date range selector component
+
+- New **reusable date range selector** component
+  (`frontend/js/components/date-range-selector.js`) — the app's first shared
+  UI component. Preset quick-selects (This Month, Last Month, 3M, 6M, 12M,
+  YTD) plus custom date range with Apply button.
+- Dashboard and reports APIs now accept `start_date` / `end_date` query
+  parameters (ISO 8601) for flexible date-range filtering.
+- Reports API auto-computes the comparison "previous period" by shifting the
+  selected range back by its duration.
+
+### Changed
+
+- **Dashboard** — replaced per-chart 3m/6m/12m period selectors with a single
+  page-level date range selector that controls all charts and KPIs at once.
+  KPI labels now reflect the selected period dynamically.
+- **Spending by Category** donut chart now respects the selected date range
+  (previously locked to current month).
+- **Reports view** — added date range selector; users can now compare any
+  period, not just current vs last month.
+- Dashboard summary response keys renamed: `month_income` → `income`,
+  `month_expenses` → `expenses`, `month_net` → `net`.
+
+---
+
 ## [0.3.8] — 2026-03-26
 
 ### Added

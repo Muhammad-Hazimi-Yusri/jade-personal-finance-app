@@ -194,6 +194,7 @@ jade/
 │   │   ├── ✅ api.js            # Fetch wrapper for all API calls (Phase 1)
 │   │   ├── ✅ utils.js          # Shared formatting, helpers
 │   │   ├── 🔲 components/       # Reusable UI components
+│   │   │   ├── ✅ date-range-selector.js
 │   │   │   ├── 🔲 modal.js
 │   │   │   ├── 🔲 toast.js
 │   │   │   ├── 🔲 table.js
@@ -693,7 +694,7 @@ All responses use JSON. All monetary values are returned as decimals (e.g., `5.1
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/reports/spending` | Spending breakdown by category & period |
+| `GET` | `/api/reports/spending` | Spending breakdown by category & period. Query: `period`, `start_date`, `end_date` |
 | `GET` | `/api/reports/income-vs-expenses` | Income vs expenses over time |
 | `GET` | `/api/reports/net-worth` | Net worth trend (account snapshots) |
 | `GET` | `/api/reports/trading-performance` | Win rate, profit factor, expectancy, etc. |
@@ -717,7 +718,7 @@ All responses use JSON. All monetary values are returned as decimals (e.g., `5.1
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/dashboard/finance` | Finance overview: balance, income, expenses, budget status |
+| `GET` | `/api/dashboard/finance` | Finance overview: balance, income, expenses, budget status. Query: `months`, `start_date`, `end_date`, `limit` |
 | `GET` | `/api/dashboard/trading` | Trading overview: open trades, today's P&L, key metrics |
 
 ---
@@ -1449,7 +1450,7 @@ def run_migrations(db_path):
 - [x] **3.6** Cash flow area chart
 - [x] **3.7** Budget progress bars with warnings at 80%/100%
 - [x] **3.8** Spending reports with period comparison (this month vs last)
-- [ ] **3.9** Date range selector component
+- [x] **3.9** Date range selector component
 
 ### Phase 4: Trading Journal
 > Trade logging, accounts, strategies, and the full trade form.

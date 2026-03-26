@@ -6,13 +6,13 @@
 
 import { api } from '../api.js';
 import { formatCurrency, formatDate, escHtml } from '../utils.js';
+import { createDateRangeSelector, getPresetRange } from '../components/date-range-selector.js';
 
 // Module state
 let data = null;
 let categories = [];
 let charts = {};
-let selectedMonths = 6;
-let selectedCfMonths = 6;
+let periodLabel = 'This Month';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -55,14 +55,15 @@ function _formatAxis(value) {
 
 export async function render(container) {
     _destroyCharts();
-    selectedMonths = 6;
-    selectedCfMonths = 6;
+    periodLabel = 'Last 6 Months';
 
     container.innerHTML = `
         <div class="page-header">
             <h1>Dashboard</h1>
             <p>Finance overview</p>
         </div>
+
+        <div id="dash-date-range-mount"></div>
 
         <div id="dash-loading" class="loading">Loading dashboard…</div>
         <div id="dash-error" class="error-state" style="display:none"></div>
@@ -75,14 +76,7 @@ export async function render(container) {
 
             <div class="dash-grid">
                 <div class="card">
-                    <div class="card-header-row">
-                        <div class="card-title">Income vs Expenses</div>
-                        <div class="period-selector" id="ie-period-selector">
-                            <button class="period-btn" data-months="3">3m</button>
-                            <button class="period-btn period-btn--active" data-months="6">6m</button>
-                            <button class="period-btn" data-months="12">12m</button>
-                        </div>
-                    </div>
+                    <div class="card-title">Income vs Expenses</div>
                     <div class="chart-wrap">
                         <canvas id="chart-income-expenses"></canvas>
                     </div>
@@ -102,17 +96,10 @@ export async function render(container) {
                         <canvas id="chart-spending"></canvas>
                     </div>
                     <div id="spending-breakdown" class="spending-breakdown"></div>
-                    <p id="spending-empty" class="text-muted" style="display:none;text-align:center;margin-top:16px;">No spending this month.</p>
+                    <p id="spending-empty" class="text-muted" style="display:none;text-align:center;margin-top:16px;">No spending data for this period.</p>
                 </div>
                 <div class="card">
-                    <div class="card-header-row">
-                        <div class="card-title">Cash Flow</div>
-                        <div class="period-selector" id="cf-period-selector">
-                            <button class="period-btn" data-months="3">3m</button>
-                            <button class="period-btn period-btn--active" data-months="6">6m</button>
-                            <button class="period-btn" data-months="12">12m</button>
-                        </div>
-                    </div>
+                    <div class="card-title">Cash Flow</div>
                     <div class="chart-wrap">
                         <canvas id="chart-cash-flow"></canvas>
                     </div>
@@ -139,22 +126,41 @@ export async function render(container) {
         </div>
     `;
 
-    await loadDashboard();
+    // Mount date range selector
+    const mount = document.getElementById('dash-date-range-mount');
+    const selector = createDateRangeSelector({
+        onChange: async (startDate, endDate, label) => {
+            periodLabel = label;
+            await refreshDashboard(startDate, endDate);
+        },
+        initialPreset: 'last_6m',
+        id: 'dash-date-range',
+    });
+    mount.appendChild(selector);
+
+    // Initial load with default preset
+    const initial = getPresetRange('last_6m');
+    periodLabel = initial.label;
+    await loadDashboard(initial.startDate, initial.endDate);
 }
 
 // ---------------------------------------------------------------------------
 // Data loading
 // ---------------------------------------------------------------------------
 
-async function loadDashboard() {
+async function loadDashboard(startDate, endDate) {
     const loading = document.getElementById('dash-loading');
     const error   = document.getElementById('dash-error');
     const content = document.getElementById('dash-content');
     const empty   = document.getElementById('dash-empty');
 
+    const params = startDate && endDate
+        ? `?start_date=${startDate}&end_date=${endDate}`
+        : '';
+
     try {
         const [dashData, catData] = await Promise.all([
-            api.get('/dashboard/finance'),
+            api.get(`/dashboard/finance${params}`),
             api.get('/categories/'),
         ]);
 
@@ -165,11 +171,13 @@ async function loadDashboard() {
 
         // Empty state check
         const s = data.summary;
-        if (s.balance === 0 && s.month_income === 0 && data.recent_transactions.length === 0) {
+        if (s.balance === 0 && s.income === 0 && data.recent_transactions.length === 0) {
             empty.style.display = '';
+            content.style.display = 'none';
             return;
         }
 
+        empty.style.display = 'none';
         content.style.display = '';
 
         renderKPIs(data.summary);
@@ -177,60 +185,41 @@ async function loadDashboard() {
         renderRecentTransactions(data.recent_transactions);
         renderCharts(data);
 
-        // Period selector for income vs expenses chart
-        document.getElementById('ie-period-selector')?.addEventListener('click', async (e) => {
-            const btn = e.target.closest('.period-btn');
-            if (!btn) return;
-            const months = Number(btn.dataset.months);
-            if (months === selectedMonths) return;
-
-            selectedMonths = months;
-
-            // Update active button
-            document.querySelectorAll('#ie-period-selector .period-btn').forEach(b =>
-                b.classList.toggle('period-btn--active', Number(b.dataset.months) === months)
-            );
-
-            // Re-fetch and re-render only the income/expenses chart
-            try {
-                const freshData = await api.get(`/dashboard/finance?months=${months}`);
-                data.income_vs_expenses = freshData.income_vs_expenses;
-                charts.incomeExpenses?.destroy();
-                renderIncomeExpensesChart(data.income_vs_expenses);
-            } catch (err) {
-                console.error('Failed to refresh income/expenses chart:', err);
-            }
-        });
-
-        // Period selector for cash flow chart
-        document.getElementById('cf-period-selector')?.addEventListener('click', async (e) => {
-            const btn = e.target.closest('.period-btn');
-            if (!btn) return;
-            const months = Number(btn.dataset.months);
-            if (months === selectedCfMonths) return;
-
-            selectedCfMonths = months;
-
-            // Update active button
-            document.querySelectorAll('#cf-period-selector .period-btn').forEach(b =>
-                b.classList.toggle('period-btn--active', Number(b.dataset.months) === months)
-            );
-
-            // Re-fetch and re-render only the cash flow chart
-            try {
-                const freshData = await api.get(`/dashboard/finance?months=${months}`);
-                data.cash_flow = freshData.cash_flow;
-                charts.cashFlow?.destroy();
-                renderCashFlowChart(data.cash_flow);
-            } catch (err) {
-                console.error('Failed to refresh cash flow chart:', err);
-            }
-        });
-
     } catch (err) {
         loading.style.display = 'none';
         error.style.display = '';
         error.textContent = err.message || 'Failed to load dashboard.';
+    }
+}
+
+async function refreshDashboard(startDate, endDate) {
+    const content = document.getElementById('dash-content');
+    const empty   = document.getElementById('dash-empty');
+
+    const params = `?start_date=${startDate}&end_date=${endDate}`;
+
+    try {
+        const dashData = await api.get(`/dashboard/finance${params}`);
+        data = dashData;
+
+        const s = data.summary;
+        if (s.balance === 0 && s.income === 0 && data.recent_transactions.length === 0) {
+            empty.style.display = '';
+            content.style.display = 'none';
+            return;
+        }
+
+        empty.style.display = 'none';
+        content.style.display = '';
+
+        _destroyCharts();
+        renderKPIs(data.summary);
+        renderBudgetBars(data.budget_status);
+        renderRecentTransactions(data.recent_transactions);
+        renderCharts(data);
+
+    } catch (err) {
+        console.error('Failed to refresh dashboard:', err);
     }
 }
 
@@ -242,6 +231,7 @@ function renderKPIs(summary) {
     const grid = document.getElementById('kpi-grid');
 
     const savingsColour = summary.savings_rate >= 0 ? 'text-success' : 'text-danger';
+    const lbl = escHtml(periodLabel);
 
     grid.innerHTML = `
         <div class="kpi-card">
@@ -249,16 +239,16 @@ function renderKPIs(summary) {
             <span class="kpi-card__value">${formatCurrency(summary.balance)}</span>
         </div>
         <div class="kpi-card">
-            <span class="kpi-card__label">Income This Month</span>
-            <span class="kpi-card__value">${formatCurrency(summary.month_income)}</span>
+            <span class="kpi-card__label">Income (${lbl})</span>
+            <span class="kpi-card__value">${formatCurrency(summary.income)}</span>
         </div>
         <div class="kpi-card">
-            <span class="kpi-card__label">Expenses This Month</span>
-            <span class="kpi-card__value">${formatCurrency(-summary.month_expenses)}</span>
+            <span class="kpi-card__label">Expenses (${lbl})</span>
+            <span class="kpi-card__value">${formatCurrency(-summary.expenses)}</span>
         </div>
         <div class="kpi-card">
-            <span class="kpi-card__label">Net This Month</span>
-            <span class="kpi-card__value">${formatCurrency(summary.month_net)}</span>
+            <span class="kpi-card__label">Net (${lbl})</span>
+            <span class="kpi-card__value">${formatCurrency(summary.net)}</span>
         </div>
         <div class="kpi-card">
             <span class="kpi-card__label">Savings Rate</span>

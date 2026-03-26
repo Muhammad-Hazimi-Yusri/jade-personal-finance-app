@@ -9,7 +9,7 @@ of the app only sees decimals.
 """
 
 import sqlite3
-from datetime import date
+from datetime import date, timedelta
 
 
 # ---------------------------------------------------------------------------
@@ -59,18 +59,37 @@ def _month_boundaries(
 # ---------------------------------------------------------------------------
 
 
+def _format_range_label(sd: date, ed: date) -> str:
+    """Create a human-readable label for a date range.
+
+    Same month: "Mar 2026".  Cross-month: "Jan–Mar 2026".  Cross-year:
+    "Nov 2025–Mar 2026".
+    """
+    if sd.year == ed.year and sd.month == ed.month:
+        return sd.strftime("%b %Y")
+    if sd.year == ed.year:
+        return f"{sd.strftime('%b')}–{ed.strftime('%b %Y')}"
+    return f"{sd.strftime('%b %Y')}–{ed.strftime('%b %Y')}"
+
+
 def get_spending_comparison(
     db: sqlite3.Connection,
     *,
     period: str = "month",
+    start_date: str | None = None,
+    end_date: str | None = None,
     today: date | None = None,
 ) -> dict:
     """Compare spending by category between the current and previous period.
 
     Args:
         db: Active database connection.
-        period: Comparison period type. Currently only ``"month"`` is
-            supported (this month vs last month).
+        period: Comparison period type (``"month"``). Ignored when
+            start_date/end_date are provided.
+        start_date: ISO 8601 start of "current" period (inclusive).
+        end_date: ISO 8601 end of "current" period (inclusive).
+            The "previous" period is auto-computed as the same duration
+            shifted backward.
         today: Reference date (defaults to today; accepts override for tests).
 
     Returns:
@@ -78,17 +97,37 @@ def get_spending_comparison(
         (list of per-category comparisons), and ``totals``.
 
     Raises:
-        ValueError: If *period* is not a supported value.
+        ValueError: If dates are invalid or *period* is unsupported.
     """
-    if period != "month":
-        raise ValueError(f"Unsupported period: {period!r}. Only 'month' is supported.")
-
     today = today or date.today()
 
-    # Current month and previous month boundaries
-    boundaries = _month_boundaries(today, 2)
-    prev_label, prev_start, prev_end = boundaries[0]
-    curr_label, curr_start, curr_end = boundaries[1]
+    if start_date and end_date:
+        sd = date.fromisoformat(start_date)
+        ed = date.fromisoformat(end_date)
+        if sd > ed:
+            raise ValueError("start_date must be on or before end_date")
+
+        # Current period: start_date to end_date (inclusive → exclusive end)
+        curr_start = start_date
+        curr_end = (ed + timedelta(days=1)).isoformat()
+        curr_label = _format_range_label(sd, ed)
+
+        # Previous period: shift back by the same duration
+        duration = (ed - sd).days + 1  # inclusive count
+        prev_ed = sd - timedelta(days=1)
+        prev_sd = prev_ed - timedelta(days=duration - 1)
+        prev_start = prev_sd.isoformat()
+        prev_end = (prev_ed + timedelta(days=1)).isoformat()
+        prev_label = _format_range_label(prev_sd, prev_ed)
+    else:
+        if period != "month":
+            raise ValueError(
+                f"Unsupported period: {period!r}. Only 'month' is supported."
+            )
+        # Current month and previous month boundaries
+        boundaries = _month_boundaries(today, 2)
+        prev_label, prev_start, prev_end = boundaries[0]
+        curr_label, curr_start, curr_end = boundaries[1]
 
     # Single query with conditional aggregation for both periods
     rows = db.execute(
