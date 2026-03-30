@@ -165,7 +165,7 @@ jade/
 │   │   ├── ✅ budgets.py        # Budget CRUD (Phase 3)
 │   │   ├── ✅ category_rules.py # Category rules CRUD (Phase 2)
 │   │   ├── 🔲 trades.py         # Trading journal CRUD (Phase 4)
-│   │   ├── 🔲 accounts.py       # Trading account management (Phase 4)
+│   │   ├── ✅ accounts.py       # Trading account management (Phase 4)
 │   │   ├── 🔲 strategies.py     # Strategy management (Phase 4)
 │   │   ├── ✅ reports.py        # Spending reports & comparisons (Phase 3)
 │   │   └── ✅ dashboard.py       # Dashboard summary data (Phase 3)
@@ -178,6 +178,7 @@ jade/
 │   │   ├── ✅ category_rules.py # Category rules engine (Phase 2)
 │   │   ├── ✅ budgets.py        # Budget CRUD logic & validation (Phase 3)
 │   │   ├── ✅ reports.py        # Spending reports & comparisons (Phase 3)
+│   │   ├── ✅ accounts.py       # Trading account CRUD logic (Phase 4)
 │   │   ├── 🔲 trade_calculator.py # R-multiples, win rate, etc. (Phase 4)
 │   │   └── ✅ dashboard.py       # Dashboard summary data (Phase 3)
 │   │
@@ -1413,7 +1414,7 @@ def run_migrations(db_path):
 
 ## Development Roadmap
 
-> **Current Phase: Phase 3 — Finance Dashboard**
+> **Current Phase: Phase 4 — Trading Journal**
 >
 > When completing a task, update this README: check the box `[x]` and update the Project Structure status icons from 🔲 to ✅ for any files created.
 
@@ -1455,7 +1456,7 @@ def run_migrations(db_path):
 ### Phase 4: Trading Journal
 > Trade logging, accounts, strategies, and the full trade form.
 
-- [ ] **4.1** Trading accounts CRUD API and UI
+- [x] **4.1** Trading accounts CRUD API and UI
 - [ ] **4.2** Strategies CRUD API and UI
 - [ ] **4.3** Tags CRUD and trade-tag association
 - [ ] **4.4** Trade CRUD API with all fields

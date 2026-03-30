@@ -9,7 +9,7 @@
  */
 
 import { api } from '../api.js';
-import { escHtml } from '../utils.js';
+import { escHtml, formatCurrency } from '../utils.js';
 
 // ---------------------------------------------------------------------------
 // Module state
@@ -22,6 +22,10 @@ let editId = null;
 let rules = [];
 let ruleFormMode = null;   // null | 'add' | 'edit'
 let ruleEditId = null;
+
+let accounts = [];
+let acctFormMode = null;   // null | 'add' | 'edit'
+let acctEditId = null;
 
 // ---------------------------------------------------------------------------
 // Render
@@ -140,7 +144,7 @@ export async function render(container) {
         </div>
 
         <!-- Category Rules table -->
-        <div class="card">
+        <div class="card mb-5">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="card-title" style="margin-bottom:0">Category Rules</h2>
                 <button type="button" id="btn-add-rule" class="btn btn-primary">+ Add Rule</button>
@@ -172,11 +176,90 @@ export async function render(container) {
                 </table>
             </div>
         </div>
+
+        <!-- Account add/edit form (hidden by default) -->
+        <div id="acct-form-section" style="display:none">
+            <div class="card mb-5">
+                <h2 id="acct-form-title" class="card-title">Add Trading Account</h2>
+                <div id="acct-form-error" class="error-state mb-4" style="display:none"></div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="af-name">Account Name <span class="text-danger">*</span></label>
+                        <input type="text" id="af-name" placeholder="e.g. IBKR Main" maxlength="100">
+                        <span class="form-hint">Your name for this account</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="af-broker">Broker (optional)</label>
+                        <input type="text" id="af-broker" placeholder="e.g. Interactive Brokers" maxlength="100">
+                        <span class="form-hint">Broker or exchange name</span>
+                    </div>
+                </div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="af-asset-class">Asset Class <span class="text-danger">*</span></label>
+                        <select id="af-asset-class">
+                            <option value="stocks">Stocks</option>
+                            <option value="forex">Forex</option>
+                            <option value="crypto">Crypto</option>
+                            <option value="options">Options</option>
+                            <option value="multi">Multi</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="af-currency">Currency</label>
+                        <input type="text" id="af-currency" placeholder="GBP" maxlength="10" value="GBP">
+                        <span class="form-hint">3-letter currency code</span>
+                    </div>
+                </div>
+                <div class="form-group" style="max-width:220px">
+                    <label for="af-balance">Initial Balance (£)</label>
+                    <input type="number" id="af-balance" step="0.01" min="0" placeholder="0.00" value="0">
+                    <span class="form-hint">Starting account balance</span>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="btn-save-acct" class="btn btn-primary">Save</button>
+                    <button type="button" id="btn-cancel-acct" class="btn btn-ghost">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trading Accounts table -->
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="card-title" style="margin-bottom:0">Trading Accounts</h2>
+                <button type="button" id="btn-add-acct" class="btn btn-primary">+ Add Account</button>
+            </div>
+            <p class="text-secondary mb-4" style="margin-top:-8px">
+                Manage your trading accounts across brokers and asset classes.
+            </p>
+            <div id="acct-loading" class="loading">Loading accounts…</div>
+            <div id="acct-error" class="error-state" style="display:none"></div>
+            <div id="acct-empty" class="text-muted" style="display:none;padding:var(--space-4) 0">
+                No trading accounts yet. Add one to start logging trades.
+            </div>
+            <div id="acct-table-wrap" class="table-container" style="display:none">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th>Broker</th>
+                            <th>Asset Class</th>
+                            <th>Currency</th>
+                            <th style="text-align:right">Initial Balance</th>
+                            <th style="width:70px">Active</th>
+                            <th style="width:120px">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="acct-body"></tbody>
+                </table>
+            </div>
+        </div>
     `;
 
     attachListeners(container);
     await loadCategories();
     await loadRules();
+    await loadAccounts();
 }
 
 // ---------------------------------------------------------------------------
@@ -520,6 +603,206 @@ async function toggleRule(id) {
 }
 
 // ---------------------------------------------------------------------------
+// Data loading — Accounts
+// ---------------------------------------------------------------------------
+
+async function loadAccounts() {
+    const loading = document.getElementById('acct-loading');
+    const error = document.getElementById('acct-error');
+    const tableWrap = document.getElementById('acct-table-wrap');
+    const empty = document.getElementById('acct-empty');
+
+    loading.style.display = '';
+    error.style.display = 'none';
+    tableWrap.style.display = 'none';
+    empty.style.display = 'none';
+
+    try {
+        const data = await api.get('/api/accounts/');
+        accounts = data.accounts;
+        loading.style.display = 'none';
+        if (accounts.length === 0) {
+            empty.style.display = '';
+        } else {
+            renderAccountRows();
+            tableWrap.style.display = '';
+        }
+    } catch (err) {
+        loading.style.display = 'none';
+        error.style.display = '';
+        error.textContent = `Failed to load accounts: ${err.message}`;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Table rendering — Accounts
+// ---------------------------------------------------------------------------
+
+const _ASSET_CLASS_LABELS = {
+    stocks: 'Stocks',
+    forex: 'Forex',
+    crypto: 'Crypto',
+    options: 'Options',
+    multi: 'Multi',
+};
+
+const _ASSET_CLASS_COLOURS = {
+    stocks: '#3B82F6',
+    forex: '#F59E0B',
+    crypto: '#A78BFA',
+    options: '#EC4899',
+    multi: '#10B981',
+};
+
+function renderAccountRows() {
+    const tbody = document.getElementById('acct-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = accounts.map(a => {
+        const colour = _ASSET_CLASS_COLOURS[a.asset_class] ?? '#6B7280';
+        const label = escHtml(_ASSET_CLASS_LABELS[a.asset_class] ?? a.asset_class);
+        return `
+        <tr style="${a.is_active ? '' : 'opacity:0.5'}">
+            <td><strong>${escHtml(a.name)}</strong></td>
+            <td class="text-secondary">${a.broker ? escHtml(a.broker) : '—'}</td>
+            <td>
+                <span class="colour-swatch" style="background:${colour}"></span>
+                ${label}
+            </td>
+            <td class="mono">${escHtml(a.currency)}</td>
+            <td style="text-align:right">
+                <span class="mono">${formatCurrency(a.initial_balance, false)}</span>
+            </td>
+            <td>
+                <button class="btn btn-ghost" style="padding:2px 8px;font-size:12px"
+                        data-acct-toggle="${a.id}">
+                    ${a.is_active ? 'On' : 'Off'}
+                </button>
+            </td>
+            <td>
+                <div class="flex gap-2">
+                    <button class="btn btn-ghost" style="padding:2px 8px;font-size:12px"
+                            data-acct-edit="${a.id}">Edit</button>
+                    <button class="btn btn-danger" style="padding:2px 8px;font-size:12px"
+                            data-acct-delete="${a.id}">Delete</button>
+                </div>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+// ---------------------------------------------------------------------------
+// Form handling — Accounts
+// ---------------------------------------------------------------------------
+
+function showAccountForm(mode, account = null) {
+    acctFormMode = mode;
+    acctEditId = account ? account.id : null;
+
+    const section = document.getElementById('acct-form-section');
+    const title = document.getElementById('acct-form-title');
+    const errorDiv = document.getElementById('acct-form-error');
+
+    title.textContent = mode === 'add' ? 'Add Trading Account' : 'Edit Trading Account';
+    errorDiv.style.display = 'none';
+
+    document.getElementById('af-name').value = account ? account.name : '';
+    document.getElementById('af-broker').value = account?.broker ?? '';
+    document.getElementById('af-asset-class').value = account ? account.asset_class : 'stocks';
+    document.getElementById('af-currency').value = account ? account.currency : 'GBP';
+    document.getElementById('af-balance').value = account ? account.initial_balance : '0';
+
+    section.style.display = '';
+    document.getElementById('af-name').focus();
+}
+
+function hideAccountForm() {
+    acctFormMode = null;
+    acctEditId = null;
+    document.getElementById('acct-form-section').style.display = 'none';
+    document.getElementById('acct-form-error').style.display = 'none';
+}
+
+async function saveAccount() {
+    const name = document.getElementById('af-name').value.trim();
+    const broker = document.getElementById('af-broker').value.trim() || null;
+    const asset_class = document.getElementById('af-asset-class').value;
+    const currency = document.getElementById('af-currency').value.trim() || 'GBP';
+    const balanceStr = document.getElementById('af-balance').value;
+    const errorDiv = document.getElementById('acct-form-error');
+    const saveBtn = document.getElementById('btn-save-acct');
+
+    // Client-side validation
+    if (!name) {
+        errorDiv.textContent = 'Account name is required.';
+        errorDiv.style.display = '';
+        document.getElementById('af-name').focus();
+        return;
+    }
+    const balance = parseFloat(balanceStr);
+    if (balanceStr !== '' && (isNaN(balance) || balance < 0)) {
+        errorDiv.textContent = 'Initial balance must be zero or a positive number.';
+        errorDiv.style.display = '';
+        document.getElementById('af-balance').focus();
+        return;
+    }
+
+    errorDiv.style.display = 'none';
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+
+    try {
+        const body = {
+            name,
+            broker,
+            asset_class,
+            currency,
+            initial_balance: balanceStr === '' ? 0 : balance,
+        };
+        if (acctFormMode === 'add') {
+            await api.post('/api/accounts/', body);
+        } else {
+            await api.put(`/api/accounts/${acctEditId}`, body);
+        }
+        hideAccountForm();
+        await loadAccounts();
+    } catch (err) {
+        errorDiv.textContent = err.message;
+        errorDiv.style.display = '';
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save';
+    }
+}
+
+async function deleteAccount(id) {
+    const account = accounts.find(a => a.id === id);
+    if (!account) return;
+
+    if (!confirm(`Delete account "${account.name}"? This cannot be undone.`)) return;
+
+    try {
+        await api.del(`/api/accounts/${id}`);
+        await loadAccounts();
+    } catch (err) {
+        const errorDiv = document.getElementById('acct-error');
+        errorDiv.textContent = err.message;
+        errorDiv.style.display = '';
+    }
+}
+
+async function toggleAccount(id) {
+    try {
+        await api.post(`/api/accounts/${id}/toggle`);
+        await loadAccounts();
+    } catch (err) {
+        const errorDiv = document.getElementById('acct-error');
+        errorDiv.textContent = err.message;
+        errorDiv.style.display = '';
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Event listeners
 // ---------------------------------------------------------------------------
 
@@ -603,6 +886,47 @@ function attachListeners(container) {
         if (e.key === 'Enter') {
             e.preventDefault();
             saveRule();
+        }
+    });
+
+    // --- Account listeners ---
+    container.querySelector('#btn-add-acct').addEventListener('click', () => {
+        showAccountForm('add');
+    });
+
+    container.querySelector('#btn-save-acct').addEventListener('click', saveAccount);
+    container.querySelector('#btn-cancel-acct').addEventListener('click', hideAccountForm);
+
+    // Table delegation: edit / delete / toggle
+    container.querySelector('#acct-body').addEventListener('click', (e) => {
+        const editBtn = e.target.closest('[data-acct-edit]');
+        if (editBtn) {
+            const id = Number(editBtn.dataset.acctEdit);
+            const account = accounts.find(a => a.id === id);
+            if (account) showAccountForm('edit', account);
+            return;
+        }
+
+        const deleteBtn = e.target.closest('[data-acct-delete]');
+        if (deleteBtn) {
+            const id = Number(deleteBtn.dataset.acctDelete);
+            deleteAccount(id);
+            return;
+        }
+
+        const toggleBtn = e.target.closest('[data-acct-toggle]');
+        if (toggleBtn) {
+            const id = Number(toggleBtn.dataset.acctToggle);
+            toggleAccount(id);
+        }
+    });
+
+    // Enter key in account form submits
+    const acctFormSection = container.querySelector('#acct-form-section');
+    acctFormSection.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveAccount();
         }
     });
 }
