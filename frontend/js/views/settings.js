@@ -27,6 +27,10 @@ let accounts = [];
 let acctFormMode = null;   // null | 'add' | 'edit'
 let acctEditId = null;
 
+let strategies = [];
+let stratFormMode = null;   // null | 'add' | 'edit'
+let stratEditId = null;
+
 // ---------------------------------------------------------------------------
 // Render
 // ---------------------------------------------------------------------------
@@ -224,7 +228,7 @@ export async function render(container) {
         </div>
 
         <!-- Trading Accounts table -->
-        <div class="card">
+        <div class="card mb-5">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="card-title" style="margin-bottom:0">Trading Accounts</h2>
                 <button type="button" id="btn-add-acct" class="btn btn-primary">+ Add Account</button>
@@ -254,12 +258,76 @@ export async function render(container) {
                 </table>
             </div>
         </div>
+
+        <!-- Strategy add/edit form (hidden by default) -->
+        <div id="strat-form-section" style="display:none">
+            <div class="card mb-5">
+                <h2 id="strat-form-title" class="card-title">Add Strategy</h2>
+                <div id="strat-form-error" class="error-state mb-4" style="display:none"></div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="sf-name">Strategy Name <span class="text-danger">*</span></label>
+                        <input type="text" id="sf-name" placeholder="e.g. Breakout v1.2" maxlength="100">
+                        <span class="form-hint">Unique name for this strategy</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="sf-version">Version</label>
+                        <input type="text" id="sf-version" placeholder="1.0" maxlength="20" value="1.0">
+                        <span class="form-hint">Version label (e.g. 1.0, 2.1)</span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label for="sf-description">Description (optional)</label>
+                    <textarea id="sf-description" rows="2" placeholder="Short description of the strategy approach" style="resize:vertical"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="sf-rules">Entry Rules / Checklist (optional)</label>
+                    <textarea id="sf-rules" rows="5" placeholder="1. Wait for breakout confirmation&#10;2. Set stop below swing low&#10;3. Risk 1% per trade" style="resize:vertical;font-family:var(--font-mono, monospace);font-size:13px"></textarea>
+                    <span class="form-hint">Entry checklist shown when logging trades</span>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="btn-save-strat" class="btn btn-primary">Save</button>
+                    <button type="button" id="btn-cancel-strat" class="btn btn-ghost">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trading Strategies table -->
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="card-title" style="margin-bottom:0">Trading Strategies</h2>
+                <button type="button" id="btn-add-strat" class="btn btn-primary">+ Add Strategy</button>
+            </div>
+            <p class="text-secondary mb-4" style="margin-top:-8px">
+                Define named strategies with rules and checklists. Assign them to trades.
+            </p>
+            <div id="strat-loading" class="loading">Loading strategies…</div>
+            <div id="strat-error" class="error-state" style="display:none"></div>
+            <div id="strat-empty" class="text-muted" style="display:none;padding:var(--space-4) 0">
+                No strategies yet. Add one to start tagging trades with a strategy.
+            </div>
+            <div id="strat-table-wrap" class="table-container" style="display:none">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th style="width:90px">Version</th>
+                            <th>Description</th>
+                            <th style="width:70px">Active</th>
+                            <th style="width:120px">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="strat-body"></tbody>
+                </table>
+            </div>
+        </div>
     `;
 
     attachListeners(container);
     await loadCategories();
     await loadRules();
     await loadAccounts();
+    await loadStrategies();
 }
 
 // ---------------------------------------------------------------------------
@@ -803,6 +871,165 @@ async function toggleAccount(id) {
 }
 
 // ---------------------------------------------------------------------------
+// Data loading — Strategies
+// ---------------------------------------------------------------------------
+
+async function loadStrategies() {
+    const loading = document.getElementById('strat-loading');
+    const error = document.getElementById('strat-error');
+    const tableWrap = document.getElementById('strat-table-wrap');
+    const empty = document.getElementById('strat-empty');
+
+    loading.style.display = '';
+    error.style.display = 'none';
+    tableWrap.style.display = 'none';
+    empty.style.display = 'none';
+
+    try {
+        const data = await api.get('/api/strategies/');
+        strategies = data.strategies;
+        loading.style.display = 'none';
+        if (strategies.length === 0) {
+            empty.style.display = '';
+        } else {
+            renderStrategyRows();
+            tableWrap.style.display = '';
+        }
+    } catch (err) {
+        loading.style.display = 'none';
+        error.style.display = '';
+        error.textContent = `Failed to load strategies: ${err.message}`;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Table rendering — Strategies
+// ---------------------------------------------------------------------------
+
+function renderStrategyRows() {
+    const tbody = document.getElementById('strat-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = strategies.map(s => `
+        <tr style="${s.is_active ? '' : 'opacity:0.5'}">
+            <td><strong>${escHtml(s.name)}</strong></td>
+            <td class="mono text-secondary" style="font-size:13px">${escHtml(s.version)}</td>
+            <td class="text-secondary" style="font-size:13px">${s.description ? escHtml(s.description) : '—'}</td>
+            <td>
+                <button class="btn btn-ghost" style="padding:2px 8px;font-size:12px"
+                        data-strat-toggle="${s.id}">
+                    ${s.is_active ? 'On' : 'Off'}
+                </button>
+            </td>
+            <td>
+                <div class="flex gap-2">
+                    <button class="btn btn-ghost" style="padding:2px 8px;font-size:12px"
+                            data-strat-edit="${s.id}">Edit</button>
+                    <button class="btn btn-danger" style="padding:2px 8px;font-size:12px"
+                            data-strat-delete="${s.id}">Delete</button>
+                </div>
+            </td>
+        </tr>
+    `).join('');
+}
+
+// ---------------------------------------------------------------------------
+// Form handling — Strategies
+// ---------------------------------------------------------------------------
+
+function showStrategyForm(mode, strategy = null) {
+    stratFormMode = mode;
+    stratEditId = strategy ? strategy.id : null;
+
+    const section = document.getElementById('strat-form-section');
+    const title = document.getElementById('strat-form-title');
+    const errorDiv = document.getElementById('strat-form-error');
+
+    title.textContent = mode === 'add' ? 'Add Strategy' : 'Edit Strategy';
+    errorDiv.style.display = 'none';
+
+    document.getElementById('sf-name').value = strategy ? strategy.name : '';
+    document.getElementById('sf-version').value = strategy ? strategy.version : '1.0';
+    document.getElementById('sf-description').value = strategy?.description ?? '';
+    document.getElementById('sf-rules').value = strategy?.rules ?? '';
+
+    section.style.display = '';
+    document.getElementById('sf-name').focus();
+}
+
+function hideStrategyForm() {
+    stratFormMode = null;
+    stratEditId = null;
+    document.getElementById('strat-form-section').style.display = 'none';
+    document.getElementById('strat-form-error').style.display = 'none';
+}
+
+async function saveStrategy() {
+    const name = document.getElementById('sf-name').value.trim();
+    const version = document.getElementById('sf-version').value.trim() || '1.0';
+    const description = document.getElementById('sf-description').value.trim() || null;
+    const rules = document.getElementById('sf-rules').value.trim() || null;
+    const errorDiv = document.getElementById('strat-form-error');
+    const saveBtn = document.getElementById('btn-save-strat');
+
+    // Client-side validation
+    if (!name) {
+        errorDiv.textContent = 'Strategy name is required.';
+        errorDiv.style.display = '';
+        document.getElementById('sf-name').focus();
+        return;
+    }
+
+    errorDiv.style.display = 'none';
+    saveBtn.disabled = true;
+    saveBtn.textContent = 'Saving…';
+
+    try {
+        const body = { name, version, description, rules };
+        if (stratFormMode === 'add') {
+            await api.post('/api/strategies/', body);
+        } else {
+            await api.put(`/api/strategies/${stratEditId}`, body);
+        }
+        hideStrategyForm();
+        await loadStrategies();
+    } catch (err) {
+        errorDiv.textContent = err.message;
+        errorDiv.style.display = '';
+    } finally {
+        saveBtn.disabled = false;
+        saveBtn.textContent = 'Save';
+    }
+}
+
+async function deleteStrategy(id) {
+    const strategy = strategies.find(s => s.id === id);
+    if (!strategy) return;
+
+    if (!confirm(`Delete strategy "${strategy.name}"? This cannot be undone.`)) return;
+
+    try {
+        await api.del(`/api/strategies/${id}`);
+        await loadStrategies();
+    } catch (err) {
+        const errorDiv = document.getElementById('strat-error');
+        errorDiv.textContent = err.message;
+        errorDiv.style.display = '';
+    }
+}
+
+async function toggleStrategy(id) {
+    try {
+        await api.post(`/api/strategies/${id}/toggle`);
+        await loadStrategies();
+    } catch (err) {
+        const errorDiv = document.getElementById('strat-error');
+        errorDiv.textContent = err.message;
+        errorDiv.style.display = '';
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Event listeners
 // ---------------------------------------------------------------------------
 
@@ -927,6 +1154,38 @@ function attachListeners(container) {
         if (e.key === 'Enter') {
             e.preventDefault();
             saveAccount();
+        }
+    });
+
+    // --- Strategy listeners ---
+    container.querySelector('#btn-add-strat').addEventListener('click', () => {
+        showStrategyForm('add');
+    });
+
+    container.querySelector('#btn-save-strat').addEventListener('click', saveStrategy);
+    container.querySelector('#btn-cancel-strat').addEventListener('click', hideStrategyForm);
+
+    // Table delegation: edit / delete / toggle
+    container.querySelector('#strat-body').addEventListener('click', (e) => {
+        const editBtn = e.target.closest('[data-strat-edit]');
+        if (editBtn) {
+            const id = Number(editBtn.dataset.stratEdit);
+            const strategy = strategies.find(s => s.id === id);
+            if (strategy) showStrategyForm('edit', strategy);
+            return;
+        }
+
+        const deleteBtn = e.target.closest('[data-strat-delete]');
+        if (deleteBtn) {
+            const id = Number(deleteBtn.dataset.stratDelete);
+            deleteStrategy(id);
+            return;
+        }
+
+        const toggleBtn = e.target.closest('[data-strat-toggle]');
+        if (toggleBtn) {
+            const id = Number(toggleBtn.dataset.stratToggle);
+            toggleStrategy(id);
         }
     });
 }

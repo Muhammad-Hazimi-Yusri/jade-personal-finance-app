@@ -155,7 +155,9 @@ jade/
 │   │   ├── ✅ 001_initial.sql
 │   │   ├── ✅ 002_money_to_pence.sql
 │   │   ├── ✅ 003_category_rules_import_profiles.sql
-│   │   └── ✅ 004_budgets.sql
+│   │   ├── ✅ 004_budgets.sql
+│   │   ├── ✅ 005_trading_accounts.sql
+│   │   └── ✅ 006_strategies.sql
 │   │
 │   ├── ✅ routes/               # API route blueprints
 │   │   ├── ✅ __init__.py
@@ -166,7 +168,7 @@ jade/
 │   │   ├── ✅ category_rules.py # Category rules CRUD (Phase 2)
 │   │   ├── 🔲 trades.py         # Trading journal CRUD (Phase 4)
 │   │   ├── ✅ accounts.py       # Trading account management (Phase 4)
-│   │   ├── 🔲 strategies.py     # Strategy management (Phase 4)
+│   │   ├── ✅ strategies.py     # Strategy management (Phase 4)
 │   │   ├── ✅ reports.py        # Spending reports & comparisons (Phase 3)
 │   │   └── ✅ dashboard.py       # Dashboard summary data (Phase 3)
 │   │
@@ -179,6 +181,7 @@ jade/
 │   │   ├── ✅ budgets.py        # Budget CRUD logic & validation (Phase 3)
 │   │   ├── ✅ reports.py        # Spending reports & comparisons (Phase 3)
 │   │   ├── ✅ accounts.py       # Trading account CRUD logic (Phase 4)
+│   │   ├── ✅ strategies.py     # Strategy CRUD logic (Phase 4)
 │   │   ├── 🔲 trade_calculator.py # R-multiples, win rate, etc. (Phase 4)
 │   │   └── ✅ dashboard.py       # Dashboard summary data (Phase 3)
 │   │
@@ -1457,7 +1460,7 @@ def run_migrations(db_path):
 > Trade logging, accounts, strategies, and the full trade form.
 
 - [x] **4.1** Trading accounts CRUD API and UI
-- [ ] **4.2** Strategies CRUD API and UI
+- [x] **4.2** Strategies CRUD API and UI
 - [ ] **4.3** Tags CRUD and trade-tag association
 - [ ] **4.4** Trade CRUD API with all fields
 - [ ] **4.5** Trade form (new/edit) — multi-step or tabbed for all fields
