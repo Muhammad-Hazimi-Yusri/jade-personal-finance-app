@@ -241,7 +241,12 @@ function renderRows(trades) {
         `;
     }).join('');
 
-    // TODO Phase 4.7: Click row to navigate to trade detail view
+    tbody.querySelectorAll('tr[data-id]').forEach(row => {
+        row.style.cursor = 'pointer';
+        row.addEventListener('click', () => {
+            window.location.hash = `#/trades/view/${row.dataset.id}`;
+        });
+    });
 }
 
 function renderPagination({ total, page, per_page, pages }) {

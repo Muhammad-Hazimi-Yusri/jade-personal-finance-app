@@ -18,6 +18,7 @@ const routes = {
     'trades':            () => import('./views/trades.js'),
     'trades/new':        () => import('./views/trade-form.js'),
     'trades/edit':       () => import('./views/trade-form.js'),
+    'trades/view':       () => import('./views/trade-detail.js'),
     'analytics':         () => import('./views/trade-analytics.js'),
     'journal':           () => import('./views/journal.js'),
     'settings':          () => import('./views/settings.js'),
