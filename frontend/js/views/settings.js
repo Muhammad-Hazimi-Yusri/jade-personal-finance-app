@@ -31,6 +31,9 @@ let strategies = [];
 let stratFormMode = null;   // null | 'add' | 'edit'
 let stratEditId = null;
 
+let tags = [];
+let tagFormMode = null;   // null | 'add'
+
 // ---------------------------------------------------------------------------
 // Render
 // ---------------------------------------------------------------------------
@@ -293,7 +296,7 @@ export async function render(container) {
         </div>
 
         <!-- Trading Strategies table -->
-        <div class="card">
+        <div class="card mb-5">
             <div class="flex items-center justify-between mb-4">
                 <h2 class="card-title" style="margin-bottom:0">Trading Strategies</h2>
                 <button type="button" id="btn-add-strat" class="btn btn-primary">+ Add Strategy</button>
@@ -321,6 +324,64 @@ export async function render(container) {
                 </table>
             </div>
         </div>
+
+        <!-- Tag add form (hidden by default) -->
+        <div id="tag-form-section" style="display:none">
+            <div class="card mb-5">
+                <h2 class="card-title">Add Tag</h2>
+                <div id="tag-form-error" class="error-state mb-4" style="display:none"></div>
+                <div class="grid-2">
+                    <div class="form-group">
+                        <label for="tf-name">Tag Name <span class="text-danger">*</span></label>
+                        <input type="text" id="tf-name" placeholder="e.g. fomo, breakout, news" maxlength="50">
+                        <span class="form-hint">Unique label for this tag</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="tf-group">Group</label>
+                        <select id="tf-group">
+                            <option value="general">General</option>
+                            <option value="setup">Setup</option>
+                            <option value="mistake">Mistake</option>
+                            <option value="pattern">Pattern</option>
+                            <option value="market">Market</option>
+                        </select>
+                        <span class="form-hint">Category for this tag</span>
+                    </div>
+                </div>
+                <div class="form-actions">
+                    <button type="button" id="btn-save-tag" class="btn btn-primary">Save</button>
+                    <button type="button" id="btn-cancel-tag" class="btn btn-ghost">Cancel</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Trade Tags table -->
+        <div class="card">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="card-title" style="margin-bottom:0">Trade Tags</h2>
+                <button type="button" id="btn-add-tag" class="btn btn-primary">+ Add Tag</button>
+            </div>
+            <p class="text-secondary mb-4" style="margin-top:-8px">
+                Label trades with reusable tags. Group by setup type, mistake, pattern, or market condition.
+            </p>
+            <div id="tag-loading" class="loading">Loading tags…</div>
+            <div id="tag-error" class="error-state" style="display:none"></div>
+            <div id="tag-empty" class="text-muted" style="display:none;padding:var(--space-4) 0">
+                No tags yet. Add one to start labelling trades.
+            </div>
+            <div id="tag-table-wrap" class="table-container" style="display:none">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Name</th>
+                            <th style="width:130px">Group</th>
+                            <th style="width:80px">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tag-body"></tbody>
+                </table>
+            </div>
+        </div>
     `;
 
     attachListeners(container);
@@ -328,6 +389,7 @@ export async function render(container) {
     await loadRules();
     await loadAccounts();
     await loadStrategies();
+    await loadTags();
 }
 
 // ---------------------------------------------------------------------------
@@ -1030,6 +1092,139 @@ async function toggleStrategy(id) {
 }
 
 // ---------------------------------------------------------------------------
+// Data loading — Tags
+// ---------------------------------------------------------------------------
+
+async function loadTags() {
+    const loading  = document.getElementById('tag-loading');
+    const error    = document.getElementById('tag-error');
+    const tableWrap = document.getElementById('tag-table-wrap');
+    const empty    = document.getElementById('tag-empty');
+
+    loading.style.display   = '';
+    error.style.display     = 'none';
+    tableWrap.style.display = 'none';
+    empty.style.display     = 'none';
+
+    try {
+        const data = await api.get('/api/tags/');
+        tags = data.tags;
+        loading.style.display = 'none';
+        if (tags.length === 0) {
+            empty.style.display = '';
+        } else {
+            renderTagRows();
+            tableWrap.style.display = '';
+        }
+    } catch (err) {
+        loading.style.display = 'none';
+        error.style.display   = '';
+        error.textContent = `Failed to load tags: ${err.message}`;
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Table rendering — Tags
+// ---------------------------------------------------------------------------
+
+const _GROUP_COLOURS = {
+    general: '#6B7280',
+    setup:   '#3B82F6',
+    mistake: '#EF4444',
+    pattern: '#10B981',
+    market:  '#F59E0B',
+};
+
+function renderTagRows() {
+    const tbody = document.getElementById('tag-body');
+    if (!tbody) return;
+
+    tbody.innerHTML = tags.map(t => {
+        const colour = _GROUP_COLOURS[t.group_name] ?? '#6B7280';
+        const groupLabel = t.group_name.charAt(0).toUpperCase() + t.group_name.slice(1);
+        return `
+        <tr>
+            <td><strong>${escHtml(t.name)}</strong></td>
+            <td>
+                <span class="colour-swatch" style="background:${colour}"></span>
+                ${escHtml(groupLabel)}
+            </td>
+            <td>
+                <button class="btn btn-danger" style="padding:2px 8px;font-size:12px"
+                        data-tag-delete="${t.id}">Delete</button>
+            </td>
+        </tr>`;
+    }).join('');
+}
+
+// ---------------------------------------------------------------------------
+// Form handling — Tags
+// ---------------------------------------------------------------------------
+
+function showTagForm() {
+    tagFormMode = 'add';
+    const section  = document.getElementById('tag-form-section');
+    const errorDiv = document.getElementById('tag-form-error');
+    errorDiv.style.display = 'none';
+    document.getElementById('tf-name').value  = '';
+    document.getElementById('tf-group').value = 'general';
+    section.style.display = '';
+    document.getElementById('tf-name').focus();
+}
+
+function hideTagForm() {
+    tagFormMode = null;
+    document.getElementById('tag-form-section').style.display = 'none';
+    document.getElementById('tag-form-error').style.display   = 'none';
+}
+
+async function saveTag() {
+    const name       = document.getElementById('tf-name').value.trim();
+    const group_name = document.getElementById('tf-group').value;
+    const errorDiv   = document.getElementById('tag-form-error');
+    const saveBtn    = document.getElementById('btn-save-tag');
+
+    if (!name) {
+        errorDiv.textContent = 'Tag name is required.';
+        errorDiv.style.display = '';
+        document.getElementById('tf-name').focus();
+        return;
+    }
+
+    errorDiv.style.display = 'none';
+    saveBtn.disabled    = true;
+    saveBtn.textContent = 'Saving…';
+
+    try {
+        await api.post('/api/tags/', { name, group_name });
+        hideTagForm();
+        await loadTags();
+    } catch (err) {
+        errorDiv.textContent = err.message;
+        errorDiv.style.display = '';
+    } finally {
+        saveBtn.disabled    = false;
+        saveBtn.textContent = 'Save';
+    }
+}
+
+async function deleteTag(id) {
+    const tag = tags.find(t => t.id === id);
+    if (!tag) return;
+
+    if (!confirm(`Delete tag "${tag.name}"? This will remove it from all trades.`)) return;
+
+    try {
+        await api.del(`/api/tags/${id}`);
+        await loadTags();
+    } catch (err) {
+        const errorDiv = document.getElementById('tag-error');
+        errorDiv.textContent = err.message;
+        errorDiv.style.display = '';
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Event listeners
 // ---------------------------------------------------------------------------
 
@@ -1186,6 +1381,26 @@ function attachListeners(container) {
         if (toggleBtn) {
             const id = Number(toggleBtn.dataset.stratToggle);
             toggleStrategy(id);
+        }
+    });
+
+    // --- Tag listeners ---
+    container.querySelector('#btn-add-tag').addEventListener('click', showTagForm);
+    container.querySelector('#btn-save-tag').addEventListener('click', saveTag);
+    container.querySelector('#btn-cancel-tag').addEventListener('click', hideTagForm);
+
+    container.querySelector('#tag-body').addEventListener('click', (e) => {
+        const deleteBtn = e.target.closest('[data-tag-delete]');
+        if (deleteBtn) {
+            deleteTag(Number(deleteBtn.dataset.tagDelete));
+        }
+    });
+
+    const tagFormSection = container.querySelector('#tag-form-section');
+    tagFormSection.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            saveTag();
         }
     });
 }

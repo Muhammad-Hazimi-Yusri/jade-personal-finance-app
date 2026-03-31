@@ -157,7 +157,8 @@ jade/
 │   │   ├── ✅ 003_category_rules_import_profiles.sql
 │   │   ├── ✅ 004_budgets.sql
 │   │   ├── ✅ 005_trading_accounts.sql
-│   │   └── ✅ 006_strategies.sql
+│   │   ├── ✅ 006_strategies.sql
+│   │   └── ✅ 007_tags.sql
 │   │
 │   ├── ✅ routes/               # API route blueprints
 │   │   ├── ✅ __init__.py
@@ -169,6 +170,7 @@ jade/
 │   │   ├── 🔲 trades.py         # Trading journal CRUD (Phase 4)
 │   │   ├── ✅ accounts.py       # Trading account management (Phase 4)
 │   │   ├── ✅ strategies.py     # Strategy management (Phase 4)
+│   │   ├── ✅ tags.py           # Tags CRUD and trade-tag association (Phase 4)
 │   │   ├── ✅ reports.py        # Spending reports & comparisons (Phase 3)
 │   │   └── ✅ dashboard.py       # Dashboard summary data (Phase 3)
 │   │
@@ -182,6 +184,7 @@ jade/
 │   │   ├── ✅ reports.py        # Spending reports & comparisons (Phase 3)
 │   │   ├── ✅ accounts.py       # Trading account CRUD logic (Phase 4)
 │   │   ├── ✅ strategies.py     # Strategy CRUD logic (Phase 4)
+│   │   ├── ✅ tags.py           # Tag CRUD logic and trade-tag associations (Phase 4)
 │   │   ├── 🔲 trade_calculator.py # R-multiples, win rate, etc. (Phase 4)
 │   │   └── ✅ dashboard.py       # Dashboard summary data (Phase 3)
 │   │
@@ -1461,7 +1464,7 @@ def run_migrations(db_path):
 
 - [x] **4.1** Trading accounts CRUD API and UI
 - [x] **4.2** Strategies CRUD API and UI
-- [ ] **4.3** Tags CRUD and trade-tag association
+- [x] **4.3** Tags CRUD and trade-tag association
 - [ ] **4.4** Trade CRUD API with all fields
 - [ ] **4.5** Trade form (new/edit) — multi-step or tabbed for all fields
 - [ ] **4.6** Trade list view with filters (account, asset class, symbol, strategy, open/closed)
