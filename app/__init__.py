@@ -75,6 +75,9 @@ def create_app(test_config: dict | None = None) -> Flask:
     from .routes.tags import trades_bp as trade_tags_bp
     app.register_blueprint(trade_tags_bp)
 
+    from .routes.trades import bp as trades_bp
+    app.register_blueprint(trades_bp)
+
     # --- Serve frontend ---
     frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
 
