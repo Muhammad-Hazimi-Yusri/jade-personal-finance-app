@@ -779,6 +779,7 @@ const routes = {
     'budgets':           () => import('./views/budgets.js'),
     'trades':            () => import('./views/trades.js'),
     'trades/new':        () => import('./views/trade-form.js'),
+    'trades/edit':       () => import('./views/trade-form.js'),
     'analytics':         () => import('./views/trade-analytics.js'),
     'journal':           () => import('./views/journal.js'),
     'settings':          () => import('./views/settings.js'),
@@ -1467,7 +1468,7 @@ def run_migrations(db_path):
 - [x] **4.2** Strategies CRUD API and UI
 - [x] **4.3** Tags CRUD and trade-tag association
 - [x] **4.4** Trade CRUD API with all fields
-- [ ] **4.5** Trade form (new/edit) — multi-step or tabbed for all fields
+- [x] **4.5** Trade form (new/edit) — multi-step or tabbed for all fields
 - [ ] **4.6** Trade list view with filters (account, asset class, symbol, strategy, open/closed)
 - [ ] **4.7** Trade detail view with full info
 - [ ] **4.8** Close trade flow (enter exit price/date → auto-calculate P&L, R-multiple)

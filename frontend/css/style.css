@@ -1130,6 +1130,160 @@ details summary:hover {
   font-size: 12px;
 }
 
+/* ============================================================
+   Trade Form Tabs (Phase 4.5)
+   ============================================================ */
+
+.tab-bar {
+  display: flex;
+  gap: 0;
+  border-bottom: 1px solid var(--color-border);
+  margin-bottom: var(--space-5);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.tab-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.tab-btn {
+  flex-shrink: 0;
+  padding: var(--space-3) var(--space-4);
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+  color: var(--color-text-secondary);
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+  margin-bottom: -1px;
+  white-space: nowrap;
+  position: relative;
+}
+
+.tab-btn:hover {
+  color: var(--color-text);
+}
+
+.tab-btn--active {
+  color: var(--color-primary);
+  border-bottom-color: var(--color-primary);
+}
+
+.tab-btn[data-has-error="true"]::after {
+  content: '';
+  display: inline-block;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--color-danger);
+  margin-left: var(--space-2);
+  vertical-align: middle;
+  position: relative;
+  top: -1px;
+}
+
+.tab-panel {
+  display: none;
+}
+
+.tab-panel--active {
+  display: block;
+}
+
+/* Options-specific fields — hidden until asset_class = "options" */
+.options-fields {
+  display: none;
+}
+
+.options-fields--visible {
+  display: contents;
+}
+
+/* Tag checkbox list */
+.tag-checkbox-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  padding: var(--space-3) 0;
+}
+
+.tag-checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-1) var(--space-3);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  transition: border-color 0.15s, background 0.15s;
+  user-select: none;
+}
+
+.tag-checkbox-item:has(input:checked) {
+  border-color: var(--color-primary);
+  background: rgba(0, 168, 107, 0.08);
+  color: var(--color-text);
+}
+
+.tag-checkbox-item input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  accent-color: var(--color-primary);
+}
+
+.tag-group-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--color-text-muted);
+  margin-top: var(--space-4);
+  margin-bottom: var(--space-2);
+}
+
+/* Rating tiles (confidence 1-10, emotions 1-5) */
+.rating-group {
+  display: flex;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.rating-group input[type="radio"] {
+  display: none;
+}
+
+.rating-label {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--color-text-secondary);
+  transition: border-color 0.15s, background 0.15s, color 0.15s;
+}
+
+.rating-group input[type="radio"]:checked + .rating-label {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: #fff;
+}
+
+.rating-label:hover {
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
   .kpi-grid {
@@ -1147,5 +1301,9 @@ details summary:hover {
   .kpi-grid,
   .report-kpi-grid {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .tab-btn {
+    padding: var(--space-2) var(--space-3);
+    font-size: 12px;
   }
 }
