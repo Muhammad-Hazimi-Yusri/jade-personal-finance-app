@@ -1472,7 +1472,7 @@ def run_migrations(db_path):
 - [x] **4.5** Trade form (new/edit) — multi-step or tabbed for all fields
 - [x] **4.6** Trade list view with filters (account, asset class, symbol, strategy, open/closed)
 - [x] **4.7** Trade detail view with full info
-- [ ] **4.8** Close trade flow (enter exit price/date → auto-calculate P&L, R-multiple)
+- [x] **4.8** Close trade flow (enter exit price/date → auto-calculate P&L, R-multiple)
 - [ ] **4.9** `trade_calculator.py` — all per-trade calculations
 - [ ] **4.10** Daily journal CRUD API and UI
 

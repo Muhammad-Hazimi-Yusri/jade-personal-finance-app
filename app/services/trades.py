@@ -10,6 +10,7 @@ pence back to decimals (/ 100) so the rest of the app only sees decimals.
 
 import math
 import sqlite3
+from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 
 from app.services.tags import get_tags_for_trade
@@ -478,10 +479,10 @@ def close_trade(
     trade_id: int,
     data: dict,
 ) -> dict | None:
-    """Close an open trade by recording exit details.
+    """Close an open trade by recording exit details and calculating P&L.
 
-    Sets exit_date, exit_price, exit_fee, and is_open = 0.
-    P&L calculation is deferred to phase 4.9 (trade_calculator.py).
+    Sets exit_date, exit_price, exit_fee, is_open = 0, and calculates
+    pnl, pnl_net, pnl_percentage, r_multiple, and duration_minutes.
 
     Args:
         trade_id: The trade to close.
@@ -506,7 +507,37 @@ def close_trade(
     if data.get("exit_price") is None:
         raise ValueError("exit_price is required to close a trade")
 
-    exit_fee = _to_pence(data["exit_fee"]) if data.get("exit_fee") is not None else 0
+    # --- Convert all values to pence for arithmetic ---
+    exit_price_pence = _to_pence(data["exit_price"])
+    entry_price_pence = _to_pence(existing["entry_price"])
+    position_size = float(existing["position_size"])
+    entry_fee_pence = _to_pence(existing["entry_fee"]) if existing.get("entry_fee") else 0
+    exit_fee_pence = _to_pence(data["exit_fee"]) if data.get("exit_fee") is not None else 0
+
+    # --- Gross P&L ---
+    if existing["direction"] == "long":
+        gross_pnl = round((exit_price_pence - entry_price_pence) * position_size)
+    else:
+        gross_pnl = round((entry_price_pence - exit_price_pence) * position_size)
+
+    # --- Net P&L ---
+    net_pnl = gross_pnl - entry_fee_pence - exit_fee_pence
+
+    # --- P&L % (gross relative to notional entry cost) ---
+    notional_pence = entry_price_pence * position_size
+    pnl_pct = (gross_pnl / notional_pence * 100) if notional_pence != 0 else None
+
+    # --- R-multiple (net P&L / risk amount) ---
+    risk_pence = _to_pence(existing["risk_amount"]) if existing.get("risk_amount") else None
+    r_multiple = (net_pnl / risk_pence) if risk_pence else None
+
+    # --- Duration in minutes ---
+    try:
+        entry_dt = datetime.fromisoformat(str(existing["entry_date"]))
+        exit_dt = datetime.fromisoformat(str(data["exit_date"]).strip())
+        duration_minutes = int((exit_dt - entry_dt).total_seconds() / 60)
+    except (ValueError, TypeError):
+        duration_minutes = None
 
     db.execute(
         """
@@ -514,14 +545,24 @@ def close_trade(
         SET exit_date = ?,
             exit_price = ?,
             exit_fee = ?,
+            pnl = ?,
+            pnl_net = ?,
+            pnl_percentage = ?,
+            r_multiple = ?,
+            duration_minutes = ?,
             is_open = 0,
             updated_at = datetime('now')
         WHERE id = ?
         """,
         (
             str(data["exit_date"]).strip(),
-            _to_pence(data["exit_price"]),
-            exit_fee,
+            exit_price_pence,
+            exit_fee_pence,
+            gross_pnl,
+            net_pnl,
+            pnl_pct,
+            r_multiple,
+            duration_minutes,
             trade_id,
         ),
     )

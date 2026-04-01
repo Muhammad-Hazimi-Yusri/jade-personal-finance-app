@@ -145,6 +145,7 @@ export async function render(container) {
                 </div>
                 <div style="display: flex; gap: var(--space-3); flex-shrink: 0;">
                     <a href="#/trades" class="btn btn-ghost">← Back</a>
+                    ${trade.is_open ? '<button id="close-trade-btn" class="btn btn-warning">Close Trade</button>' : ''}
                     <a href="#/trades/edit/${trade.id}" class="btn btn-primary">Edit Trade</a>
                 </div>
             </div>
@@ -268,5 +269,73 @@ export async function render(container) {
                 </div>
             </div>
 
-        </div>`;
+        </div>
+
+        ${trade.is_open ? `
+        <div id="close-trade-modal" style="display:none; position:fixed; inset:0; z-index:1000; background:rgba(0,0,0,0.6); align-items:center; justify-content:center;">
+            <div style="background:var(--color-surface); border:1px solid var(--color-border); border-radius:8px; padding:var(--space-5); width:100%; max-width:400px; margin:var(--space-4);">
+                <div style="font-size:16px; font-weight:600; margin-bottom:var(--space-4);">Close Trade — ${escHtml(trade.symbol)}</div>
+                <div id="close-modal-error" class="text-danger" style="display:none; margin-bottom:var(--space-3); font-size:13px;"></div>
+                <div class="form-group" style="margin-bottom:var(--space-3);">
+                    <label class="form-label">Exit Date <span class="text-danger">*</span></label>
+                    <input id="close-exit-date" type="date" class="form-control" value="${new Date().toISOString().slice(0, 10)}" required>
+                </div>
+                <div class="form-group" style="margin-bottom:var(--space-3);">
+                    <label class="form-label">Exit Price (£) <span class="text-danger">*</span></label>
+                    <input id="close-exit-price" type="number" class="form-control" step="0.0001" min="0" placeholder="0.00" required>
+                </div>
+                <div class="form-group" style="margin-bottom:var(--space-4);">
+                    <label class="form-label">Exit Fee (£)</label>
+                    <input id="close-exit-fee" type="number" class="form-control" step="0.01" min="0" placeholder="0.00">
+                </div>
+                <div style="display:flex; gap:var(--space-3); justify-content:flex-end;">
+                    <button id="close-modal-cancel" class="btn btn-ghost">Cancel</button>
+                    <button id="close-modal-submit" class="btn btn-warning">Close Trade</button>
+                </div>
+            </div>
+        </div>` : ''}`;
+
+    if (trade.is_open) {
+        const btnEl    = document.getElementById('close-trade-btn');
+        const modalEl  = document.getElementById('close-trade-modal');
+        const cancelEl = document.getElementById('close-modal-cancel');
+        const submitEl = document.getElementById('close-modal-submit');
+        const errorEl  = document.getElementById('close-modal-error');
+
+        btnEl.addEventListener('click', () => {
+            modalEl.style.display = 'flex';
+        });
+        cancelEl.addEventListener('click', () => {
+            modalEl.style.display = 'none';
+        });
+        modalEl.addEventListener('click', e => {
+            if (e.target === modalEl) modalEl.style.display = 'none';
+        });
+
+        submitEl.addEventListener('click', async () => {
+            errorEl.style.display = 'none';
+            const exitDate  = document.getElementById('close-exit-date').value.trim();
+            const exitPrice = document.getElementById('close-exit-price').value.trim();
+            const exitFee   = document.getElementById('close-exit-fee').value.trim();
+
+            if (!exitDate || !exitPrice) {
+                errorEl.textContent = 'Exit date and exit price are required.';
+                errorEl.style.display = 'block';
+                return;
+            }
+
+            const body = { exit_date: exitDate, exit_price: parseFloat(exitPrice) };
+            if (exitFee) body.exit_fee = parseFloat(exitFee);
+
+            submitEl.disabled = true;
+            try {
+                await api.post(`/api/trades/${id}/close`, body);
+                await render(container);
+            } catch (err) {
+                errorEl.textContent = err.message || 'Failed to close trade.';
+                errorEl.style.display = 'block';
+                submitEl.disabled = false;
+            }
+        });
+    }
 }

@@ -233,6 +233,15 @@ ul {
   opacity: 0.85;
 }
 
+.btn-warning {
+  background: var(--color-warning);
+  color: #000;
+}
+
+.btn-warning:hover {
+  opacity: 0.85;
+}
+
 .btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
