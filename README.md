@@ -186,7 +186,7 @@ jade/
 │   │   ├── ✅ strategies.py     # Strategy CRUD logic (Phase 4)
 │   │   ├── ✅ tags.py           # Tag CRUD logic and trade-tag associations (Phase 4)
 │   │   ├── ✅ trades.py         # Trade CRUD logic, pence conversion, filters (Phase 4)
-│   │   ├── 🔲 trade_calculator.py # R-multiples, win rate, etc. (Phase 4)
+│   │   ├── ✅ trade_calculator.py # R-multiples, win rate, etc. (Phase 4)
 │   │   └── ✅ dashboard.py       # Dashboard summary data (Phase 3)
 │   │
 │   └── ✅ utils/                # Shared utilities
@@ -231,10 +231,10 @@ jade/
 │   ├── 🔲 seed.sql              # SQL script to generate fake data
 │   └── 🔲 seed.db               # Pre-built seed database (reset source)
 │
-└── 🔲 tests/                    # Test suite
-    ├── 🔲 conftest.py
+└── ✅ tests/                    # Test suite
+    ├── ✅ conftest.py
     ├── 🔲 test_csv_parser.py
-    ├── 🔲 test_trade_calculator.py
+    ├── ✅ test_trade_calculator.py
     ├── 🔲 test_transactions_api.py
     └── 🔲 test_trades_api.py
 ```
@@ -1473,7 +1473,7 @@ def run_migrations(db_path):
 - [x] **4.6** Trade list view with filters (account, asset class, symbol, strategy, open/closed)
 - [x] **4.7** Trade detail view with full info
 - [x] **4.8** Close trade flow (enter exit price/date → auto-calculate P&L, R-multiple)
-- [ ] **4.9** `trade_calculator.py` — all per-trade calculations
+- [x] **4.9** `trade_calculator.py` — all per-trade calculations
 - [ ] **4.10** Daily journal CRUD API and UI
 
 ### Phase 5: Trading Analytics

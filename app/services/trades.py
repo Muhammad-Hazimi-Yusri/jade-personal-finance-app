@@ -10,10 +10,16 @@ pence back to decimals (/ 100) so the rest of the app only sees decimals.
 
 import math
 import sqlite3
-from datetime import datetime
 from decimal import Decimal, ROUND_HALF_UP
 
 from app.services.tags import get_tags_for_trade
+from app.services.trade_calculator import (
+    calculate_duration_minutes,
+    calculate_gross_pnl,
+    calculate_net_pnl,
+    calculate_pnl_percentage,
+    calculate_r_multiple,
+)
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -513,31 +519,18 @@ def close_trade(
     position_size = float(existing["position_size"])
     entry_fee_pence = _to_pence(existing["entry_fee"]) if existing.get("entry_fee") else 0
     exit_fee_pence = _to_pence(data["exit_fee"]) if data.get("exit_fee") is not None else 0
-
-    # --- Gross P&L ---
-    if existing["direction"] == "long":
-        gross_pnl = round((exit_price_pence - entry_price_pence) * position_size)
-    else:
-        gross_pnl = round((entry_price_pence - exit_price_pence) * position_size)
-
-    # --- Net P&L ---
-    net_pnl = gross_pnl - entry_fee_pence - exit_fee_pence
-
-    # --- P&L % (gross relative to notional entry cost) ---
-    notional_pence = entry_price_pence * position_size
-    pnl_pct = (gross_pnl / notional_pence * 100) if notional_pence != 0 else None
-
-    # --- R-multiple (net P&L / risk amount) ---
     risk_pence = _to_pence(existing["risk_amount"]) if existing.get("risk_amount") else None
-    r_multiple = (net_pnl / risk_pence) if risk_pence else None
 
-    # --- Duration in minutes ---
-    try:
-        entry_dt = datetime.fromisoformat(str(existing["entry_date"]))
-        exit_dt = datetime.fromisoformat(str(data["exit_date"]).strip())
-        duration_minutes = int((exit_dt - entry_dt).total_seconds() / 60)
-    except (ValueError, TypeError):
-        duration_minutes = None
+    # --- Delegate to pure calculator functions ---
+    gross_pnl = calculate_gross_pnl(
+        entry_price_pence, exit_price_pence, position_size, existing["direction"]
+    )
+    net_pnl = calculate_net_pnl(gross_pnl, entry_fee_pence, exit_fee_pence)
+    pnl_pct = calculate_pnl_percentage(net_pnl, entry_price_pence, position_size)
+    r_multiple = calculate_r_multiple(net_pnl, risk_pence)
+    duration_minutes = calculate_duration_minutes(
+        str(existing["entry_date"]), str(data["exit_date"]).strip()
+    )
 
     db.execute(
         """
