@@ -1293,6 +1293,163 @@ details summary:hover {
   color: var(--color-text);
 }
 
+/* =========================================================
+   Journal
+   ========================================================= */
+
+.journal-layout {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: var(--space-4);
+  align-items: start;
+}
+
+.journal-date-nav {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: var(--space-4);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--color-border);
+}
+
+.journal-date-input {
+  font-family: var(--font-mono);
+  font-size: 14px;
+  flex: 1;
+  max-width: 160px;
+}
+
+.journal-status {
+  font-size: 13px;
+  margin-left: var(--space-2);
+}
+
+.journal-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.journal-textarea {
+  resize: vertical;
+  min-height: 80px;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+/* Mood picker */
+.mood-picker {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.mood-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--space-2) var(--space-3);
+  background: var(--color-surface-light);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  color: var(--color-text-secondary);
+  font-size: 20px;
+  cursor: pointer;
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.mood-btn span {
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+
+.mood-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
+
+.mood-btn--active {
+  border-color: var(--color-primary);
+  background: color-mix(in srgb, var(--color-primary) 15%, var(--color-surface));
+  color: var(--color-text);
+}
+
+/* Journal actions */
+.journal-actions {
+  display: flex;
+  gap: var(--space-3);
+  padding-top: var(--space-2);
+}
+
+.btn-danger-ghost {
+  background: transparent;
+  border: 1px solid var(--color-danger);
+  color: var(--color-danger);
+}
+
+.btn-danger-ghost:hover {
+  background: color-mix(in srgb, var(--color-danger) 15%, transparent);
+}
+
+/* Sidebar entries list */
+.journal-entries-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.journal-entry-row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  transition: background 0.15s, color 0.15s;
+}
+
+.journal-entry-row:last-child {
+  border-bottom: none;
+}
+
+.journal-entry-row:hover {
+  background: var(--color-surface-light);
+  color: var(--color-text);
+}
+
+.journal-entry-row--active {
+  background: color-mix(in srgb, var(--color-primary) 12%, var(--color-surface));
+  color: var(--color-text);
+}
+
+.entry-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  border: 1.5px solid var(--color-text-muted);
+  flex-shrink: 0;
+}
+
+.entry-dot--filled {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+}
+
+.entry-date {
+  font-family: var(--font-mono);
+  flex: 1;
+}
+
+.entry-mood {
+  font-size: 16px;
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
   .kpi-grid {
@@ -1303,6 +1460,9 @@ details summary:hover {
   }
   .cf-summary-stats {
     grid-template-columns: repeat(2, 1fr);
+  }
+  .journal-layout {
+    grid-template-columns: 1fr;
   }
 }
 

@@ -158,7 +158,8 @@ jade/
 │   │   ├── ✅ 004_budgets.sql
 │   │   ├── ✅ 005_trading_accounts.sql
 │   │   ├── ✅ 006_strategies.sql
-│   │   └── ✅ 007_tags.sql
+│   │   ├── ✅ 007_tags.sql
+│   │   └── ✅ 008_daily_journal.sql
 │   │
 │   ├── ✅ routes/               # API route blueprints
 │   │   ├── ✅ __init__.py
@@ -172,7 +173,8 @@ jade/
 │   │   ├── ✅ strategies.py     # Strategy management (Phase 4)
 │   │   ├── ✅ tags.py           # Tags CRUD and trade-tag association (Phase 4)
 │   │   ├── ✅ reports.py        # Spending reports & comparisons (Phase 3)
-│   │   └── ✅ dashboard.py       # Dashboard summary data (Phase 3)
+│   │   ├── ✅ dashboard.py       # Dashboard summary data (Phase 3)
+│   │   └── ✅ journal.py         # Daily journal CRUD (Phase 4)
 │   │
 │   ├── ✅ services/             # Business logic layer
 │   │   ├── ✅ __init__.py
@@ -187,7 +189,8 @@ jade/
 │   │   ├── ✅ tags.py           # Tag CRUD logic and trade-tag associations (Phase 4)
 │   │   ├── ✅ trades.py         # Trade CRUD logic, pence conversion, filters (Phase 4)
 │   │   ├── ✅ trade_calculator.py # R-multiples, win rate, etc. (Phase 4)
-│   │   └── ✅ dashboard.py       # Dashboard summary data (Phase 3)
+│   │   ├── ✅ dashboard.py       # Dashboard summary data (Phase 3)
+│   │   └── ✅ journal.py         # Daily journal CRUD logic (Phase 4)
 │   │
 │   └── ✅ utils/                # Shared utilities
 │       ├── ✅ __init__.py
@@ -1474,7 +1477,7 @@ def run_migrations(db_path):
 - [x] **4.7** Trade detail view with full info
 - [x] **4.8** Close trade flow (enter exit price/date → auto-calculate P&L, R-multiple)
 - [x] **4.9** `trade_calculator.py` — all per-trade calculations
-- [ ] **4.10** Daily journal CRUD API and UI
+- [x] **4.10** Daily journal CRUD API and UI
 
 ### Phase 5: Trading Analytics
 > Performance metrics, equity curves, and discipline tracking.

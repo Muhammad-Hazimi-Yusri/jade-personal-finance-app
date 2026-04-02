@@ -5,7 +5,7 @@ Flask application factory.
 
 import os
 
-__version__ = "0.4.3"
+__version__ = "0.4.10"
 
 from flask import Flask, send_from_directory
 
@@ -77,6 +77,9 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     from .routes.trades import bp as trades_bp
     app.register_blueprint(trades_bp)
+
+    from .routes.journal import bp as journal_bp
+    app.register_blueprint(journal_bp)
 
     # --- Serve frontend ---
     frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
