@@ -1489,7 +1489,7 @@ def run_migrations(db_path):
 
 - [x] **5.1** Aggregate metrics calculator (win rate, profit factor, expectancy, etc.)
 - [x] **5.2** Account snapshots: daily balance recording
-- [ ] **5.3** Trading dashboard: KPI cards (win rate, PF, expectancy, max DD)
+- [x] **5.3** Trading dashboard: KPI cards (win rate, PF, expectancy, max DD)
 - [ ] **5.4** Equity curve with TradingView Lightweight Charts
 - [ ] **5.5** P&L distribution histogram
 - [ ] **5.6** R-multiple histogram
