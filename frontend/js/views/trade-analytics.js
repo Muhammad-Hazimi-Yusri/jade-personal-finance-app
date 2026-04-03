@@ -16,6 +16,10 @@ let state = {
     endDate: '',
 };
 
+// Equity chart instance — cleaned up on each reload
+let _chart = null;
+let _resizeObserver = null;
+
 // ---- Render entry point ----
 
 export async function render(container) {
@@ -141,6 +145,78 @@ async function loadMetrics() {
     }
 
     content.innerHTML = renderDashboard(data);
+    if (data.summary.total_closed_trades > 0) {
+        await loadEquityCurve();
+    }
+}
+
+// ---- Equity curve chart ----
+
+async function loadEquityCurve() {
+    if (_resizeObserver) { _resizeObserver.disconnect(); _resizeObserver = null; }
+    if (_chart) { _chart.remove(); _chart = null; }
+
+    const container = document.getElementById('equity-chart');
+    if (!container) return;
+
+    const params = new URLSearchParams();
+    if (state.accountId)  params.set('account_id',  state.accountId);
+    if (state.strategyId) params.set('strategy_id', state.strategyId);
+    if (state.assetClass) params.set('asset_class', state.assetClass);
+    if (state.startDate)  params.set('start_date',  state.startDate);
+    if (state.endDate)    params.set('end_date',     state.endDate);
+
+    const qs = params.toString();
+    let points;
+    try {
+        const data = await api.get('/api/reports/equity-curve' + (qs ? '?' + qs : ''));
+        points = data.points ?? [];
+    } catch (err) {
+        container.innerHTML = `<div class="error-state" style="min-height:0;padding:var(--space-3);">Unable to load equity curve: ${escHtml(err.message ?? 'Unknown error')}</div>`;
+        return;
+    }
+
+    if (points.length === 0) {
+        container.innerHTML = `<p class="text-muted" style="padding:var(--space-4);font-size:13px;">No data for the selected filters.</p>`;
+        return;
+    }
+
+    if (typeof LightweightCharts === 'undefined') {
+        container.innerHTML = `<p class="text-muted" style="padding:var(--space-4);font-size:13px;">Chart library not available.</p>`;
+        return;
+    }
+
+    _chart = LightweightCharts.createChart(container, {
+        width: container.clientWidth,
+        height: 300,
+        layout: {
+            background: { color: '#1A1D27' },
+            textColor: '#9CA3AF',
+        },
+        grid: {
+            vertLines: { color: '#2E3140' },
+            horzLines: { color: '#2E3140' },
+        },
+        crosshair: { mode: LightweightCharts.CrosshairMode.Normal },
+        rightPriceScale: { borderColor: '#2E3140' },
+        timeScale: { borderColor: '#2E3140' },
+    });
+
+    const series = _chart.addAreaSeries({
+        lineColor: '#00A86B',
+        topColor: 'rgba(0,168,107,0.3)',
+        bottomColor: 'rgba(0,168,107,0.0)',
+        priceFormat: { type: 'price', precision: 2, minMove: 0.01 },
+    });
+
+    series.setData(points);
+    _chart.timeScale().fitContent();
+
+    _resizeObserver = new ResizeObserver(entries => {
+        if (!_chart) return;
+        _chart.applyOptions({ width: entries[0].contentRect.width });
+    });
+    _resizeObserver.observe(container);
 }
 
 // ---- Dashboard HTML ----
@@ -166,6 +242,12 @@ function renderDashboard(data) {
                 ${summaryPill('Losses',    summary.losing_trades,   'text-danger')}
                 ${summaryPill('Breakeven', summary.breakeven_trades)}
             </div>
+        </div>
+
+        <!-- Equity curve -->
+        <div class="card mb-4" id="equity-curve-card">
+            <div class="card-title">Equity Curve</div>
+            <div id="equity-chart" style="height: 300px; margin-top: var(--space-4);"></div>
         </div>
 
         <!-- Primary KPIs -->

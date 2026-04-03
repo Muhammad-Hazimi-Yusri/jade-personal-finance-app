@@ -15,6 +15,29 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.5.4] — 2026-04-03
+
+### Added
+
+#### Phase 5.4 — Equity curve with TradingView Lightweight Charts
+
+- New **`GET /api/reports/equity-curve`** endpoint — returns cumulative P&L
+  data points from closed trades, grouped by exit date, ordered chronologically.
+  Accepts the same filter params as `/api/reports/trading-performance`
+  (`account_id`, `strategy_id`, `asset_class`, `start_date`, `end_date`).
+- New **`get_equity_curve()`** function in `app/services/metrics_calculator.py` —
+  groups closed trades by `exit_date`, sums `pnl_net` per day (integer pence),
+  then builds the running cumulative sum, converting to decimal at the API
+  boundary. Trades with `NULL` `exit_date` or `pnl_net` are excluded.
+- **Equity curve card** added to the trading analytics dashboard
+  (`frontend/js/views/trade-analytics.js`) — appears above the KPI cards.
+  Rendered with TradingView Lightweight Charts (area series, jade-green line,
+  dark theme matching the design system). Chart respects all existing filters
+  and auto-resizes via `ResizeObserver`. Handles empty data, fetch errors, and
+  missing CDN gracefully with inline fallback messages.
+
+---
+
 ## [0.3.9] — 2026-03-26
 
 ### Added

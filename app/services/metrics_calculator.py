@@ -457,3 +457,89 @@ def get_trading_performance(
             "discipline_score": calculate_discipline_score(trades),
         },
     }
+
+
+def get_equity_curve(
+    db: sqlite3.Connection,
+    *,
+    account_id: Optional[int] = None,
+    strategy_id: Optional[int] = None,
+    asset_class: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+) -> dict:
+    """Cumulative P&L equity curve data points from closed trades.
+
+    Groups closed trades by exit_date, sums daily P&L, then computes the
+    running cumulative sum.  Returns a list of ``{time, value}`` dicts ready
+    for TradingView Lightweight Charts.
+
+    Args:
+        db: Active SQLite connection.
+        account_id: Filter to a specific trading account.
+        strategy_id: Filter to a specific strategy.
+        asset_class: Filter to a specific asset class.
+        start_date: ISO 8601 lower bound on exit_date (inclusive).
+        end_date: ISO 8601 upper bound on exit_date (inclusive).
+
+    Returns:
+        Dict with a single ``points`` key containing a list of
+        ``{"time": "YYYY-MM-DD", "value": float}`` dicts ordered by date.
+
+    Raises:
+        ValueError: If date strings are invalid or start_date > end_date.
+    """
+    if start_date is not None:
+        try:
+            date.fromisoformat(start_date)
+        except ValueError:
+            raise ValueError("start_date must be a valid ISO 8601 date (YYYY-MM-DD)")
+    if end_date is not None:
+        try:
+            date.fromisoformat(end_date)
+        except ValueError:
+            raise ValueError("end_date must be a valid ISO 8601 date (YYYY-MM-DD)")
+    if start_date is not None and end_date is not None:
+        if date.fromisoformat(start_date) > date.fromisoformat(end_date):
+            raise ValueError("start_date must be on or before end_date")
+
+    conditions = ["is_open = 0", "exit_date IS NOT NULL", "pnl_net IS NOT NULL"]
+    params: list = []
+
+    if account_id is not None:
+        conditions.append("account_id = ?")
+        params.append(account_id)
+    if strategy_id is not None:
+        conditions.append("strategy_id = ?")
+        params.append(strategy_id)
+    if asset_class is not None:
+        conditions.append("asset_class = ?")
+        params.append(asset_class)
+    if start_date is not None:
+        conditions.append("exit_date >= ?")
+        params.append(start_date)
+    if end_date is not None:
+        conditions.append("exit_date <= ?")
+        params.append(end_date)
+
+    where_clause = " AND ".join(conditions)
+    sql = f"""
+        SELECT exit_date, SUM(pnl_net) AS daily_pnl
+        FROM trades
+        WHERE {where_clause}
+        GROUP BY exit_date
+        ORDER BY exit_date ASC
+    """  # noqa: S608 — where_clause built from literals only, no user data
+
+    rows = db.execute(sql, params).fetchall()
+
+    points: list[dict] = []
+    cumulative_pence = 0
+    for row in rows:
+        cumulative_pence += row["daily_pnl"]
+        points.append({
+            "time": row["exit_date"],
+            "value": _from_pence(cumulative_pence),
+        })
+
+    return {"points": points}
