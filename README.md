@@ -159,7 +159,8 @@ jade/
 │   │   ├── ✅ 005_trading_accounts.sql
 │   │   ├── ✅ 006_strategies.sql
 │   │   ├── ✅ 007_tags.sql
-│   │   └── ✅ 008_daily_journal.sql
+│   │   ├── ✅ 008_daily_journal.sql
+│   │   └── ✅ 009_account_snapshots.sql
 │   │
 │   ├── ✅ routes/               # API route blueprints
 │   │   ├── ✅ __init__.py
@@ -174,7 +175,8 @@ jade/
 │   │   ├── ✅ tags.py           # Tags CRUD and trade-tag association (Phase 4)
 │   │   ├── ✅ reports.py        # Spending reports & comparisons (Phase 3)
 │   │   ├── ✅ dashboard.py       # Dashboard summary data (Phase 3)
-│   │   └── ✅ journal.py         # Daily journal CRUD (Phase 4)
+│   │   ├── ✅ journal.py         # Daily journal CRUD (Phase 4)
+│   │   └── ✅ snapshots.py      # Account snapshot CRUD (Phase 5)
 │   │
 │   ├── ✅ services/             # Business logic layer
 │   │   ├── ✅ __init__.py
@@ -191,7 +193,8 @@ jade/
 │   │   ├── ✅ trade_calculator.py # R-multiples, win rate, etc. (Phase 4)
 │   │   ├── ✅ metrics_calculator.py # Aggregate trading metrics (Phase 5)
 │   │   ├── ✅ dashboard.py       # Dashboard summary data (Phase 3)
-│   │   └── ✅ journal.py         # Daily journal CRUD logic (Phase 4)
+│   │   ├── ✅ journal.py         # Daily journal CRUD logic (Phase 4)
+│   │   └── ✅ snapshots.py      # Account snapshot CRUD logic (Phase 5)
 │   │
 │   └── ✅ utils/                # Shared utilities
 │       ├── ✅ __init__.py
@@ -1428,7 +1431,7 @@ def run_migrations(db_path):
 
 ## Development Roadmap
 
-> **Current Phase: Phase 4 — Trading Journal**
+> **Current Phase: Phase 5 — Trading Analytics**
 >
 > When completing a task, update this README: check the box `[x]` and update the Project Structure status icons from 🔲 to ✅ for any files created.
 
@@ -1485,7 +1488,7 @@ def run_migrations(db_path):
 > Performance metrics, equity curves, and discipline tracking.
 
 - [x] **5.1** Aggregate metrics calculator (win rate, profit factor, expectancy, etc.)
-- [ ] **5.2** Account snapshots: daily balance recording
+- [x] **5.2** Account snapshots: daily balance recording
 - [ ] **5.3** Trading dashboard: KPI cards (win rate, PF, expectancy, max DD)
 - [ ] **5.4** Equity curve with TradingView Lightweight Charts
 - [ ] **5.5** P&L distribution histogram
