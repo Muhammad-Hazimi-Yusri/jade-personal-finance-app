@@ -189,6 +189,7 @@ jade/
 │   │   ├── ✅ tags.py           # Tag CRUD logic and trade-tag associations (Phase 4)
 │   │   ├── ✅ trades.py         # Trade CRUD logic, pence conversion, filters (Phase 4)
 │   │   ├── ✅ trade_calculator.py # R-multiples, win rate, etc. (Phase 4)
+│   │   ├── ✅ metrics_calculator.py # Aggregate trading metrics (Phase 5)
 │   │   ├── ✅ dashboard.py       # Dashboard summary data (Phase 3)
 │   │   └── ✅ journal.py         # Daily journal CRUD logic (Phase 4)
 │   │
@@ -238,6 +239,7 @@ jade/
     ├── ✅ conftest.py
     ├── 🔲 test_csv_parser.py
     ├── ✅ test_trade_calculator.py
+    ├── ✅ test_metrics_calculator.py
     ├── 🔲 test_transactions_api.py
     └── 🔲 test_trades_api.py
 ```
@@ -1482,7 +1484,7 @@ def run_migrations(db_path):
 ### Phase 5: Trading Analytics
 > Performance metrics, equity curves, and discipline tracking.
 
-- [ ] **5.1** Aggregate metrics calculator (win rate, profit factor, expectancy, etc.)
+- [x] **5.1** Aggregate metrics calculator (win rate, profit factor, expectancy, etc.)
 - [ ] **5.2** Account snapshots: daily balance recording
 - [ ] **5.3** Trading dashboard: KPI cards (win rate, PF, expectancy, max DD)
 - [ ] **5.4** Equity curve with TradingView Lightweight Charts
