@@ -9,11 +9,12 @@ import { formatCurrency, escHtml } from '../utils.js';
 // ---- Module-level state ----
 
 let state = {
-    accountId: '',
+    period:     'all',
+    accountId:  '',
     strategyId: '',
     assetClass: '',
-    startDate: '',
-    endDate: '',
+    startDate:  '',
+    endDate:    '',
 };
 
 // Equity chart instance — cleaned up on each reload
@@ -27,11 +28,13 @@ let _rDistChart = null;
 let _strategyChart = null;
 // Discipline vs P&L scatter — Chart.js instance, destroyed before each reload
 let _disciplineChart = null;
+// Streak history chart — Chart.js instance, destroyed before each reload
+let _streakChart = null;
 
 // ---- Render entry point ----
 
 export async function render(container) {
-    state = { accountId: '', strategyId: '', assetClass: '', startDate: '', endDate: '' };
+    state = { period: 'all', accountId: '', strategyId: '', assetClass: '', startDate: '', endDate: '' };
 
     container.innerHTML = `
         <div class="page-header">
@@ -42,6 +45,16 @@ export async function render(container) {
         <!-- Filter bar -->
         <div class="card mb-4">
             <div class="flex gap-3 items-center" style="flex-wrap: wrap;">
+                <select id="filter-period" style="min-width: 120px;">
+                    <option value="all">All Time</option>
+                    <option value="this_week">This Week</option>
+                    <option value="this_month">This Month</option>
+                    <option value="last_month">Last Month</option>
+                    <option value="this_quarter">This Quarter</option>
+                    <option value="last_quarter">Last Quarter</option>
+                    <option value="this_year">This Year</option>
+                    <option value="custom">Custom</option>
+                </select>
                 <select id="filter-account" style="min-width: 140px;">
                     <option value="">All accounts</option>
                 </select>
@@ -55,8 +68,8 @@ export async function render(container) {
                     <option value="crypto">Crypto</option>
                     <option value="options">Options</option>
                 </select>
-                <input id="filter-start" type="date" style="width: 140px;" title="From date">
-                <input id="filter-end"   type="date" style="width: 140px;" title="To date">
+                <input id="filter-start" type="date" style="width: 140px;" title="From date" disabled>
+                <input id="filter-end"   type="date" style="width: 140px;" title="To date" disabled>
                 <button id="btn-apply" class="btn btn-primary">Apply</button>
                 <button id="btn-clear"  class="btn btn-ghost">Clear</button>
             </div>
@@ -73,25 +86,109 @@ export async function render(container) {
     await loadMetrics();
 }
 
+// ---- Period helpers ----
+
+function periodToDateRange(period) {
+    if (period === 'all' || period === 'custom') return { startDate: '', endDate: '' };
+    const ref = new Date();
+    const y   = ref.getFullYear();
+    const m   = ref.getMonth();     // 0-based
+    const iso = d => {
+        const yy = d.getFullYear();
+        const mm = String(d.getMonth() + 1).padStart(2, '0');
+        const dd = String(d.getDate()).padStart(2, '0');
+        return `${yy}-${mm}-${dd}`;
+    };
+    const today = iso(ref);
+
+    switch (period) {
+        case 'this_week': {
+            const dow    = ref.getDay() || 7;           // Mon=1 … Sun=7
+            const monday = new Date(y, m, ref.getDate() - dow + 1);
+            return { startDate: iso(monday), endDate: today };
+        }
+        case 'this_month':
+            return { startDate: iso(new Date(y, m, 1)), endDate: today };
+        case 'last_month': {
+            const start = new Date(y, m - 1, 1);
+            const end   = new Date(y, m, 0);            // last day of prev month
+            return { startDate: iso(start), endDate: iso(end) };
+        }
+        case 'this_quarter': {
+            const qStart = Math.floor(m / 3) * 3;
+            return { startDate: iso(new Date(y, qStart, 1)), endDate: today };
+        }
+        case 'last_quarter': {
+            const qStart  = Math.floor(m / 3) * 3;
+            const lqEnd   = new Date(y, qStart, 0);      // last day before current quarter
+            const lqStart = new Date(y, qStart - 3, 1);  // JS handles negative months correctly
+            return { startDate: iso(lqStart), endDate: iso(lqEnd) };
+        }
+        case 'this_year':
+            return { startDate: `${y}-01-01`, endDate: today };
+        default:
+            return { startDate: '', endDate: '' };
+    }
+}
+
+function updatePeriodInputs(period) {
+    const startEl = document.getElementById('filter-start');
+    const endEl   = document.getElementById('filter-end');
+    if (!startEl || !endEl) return;
+
+    if (period === 'custom') {
+        startEl.disabled = false;
+        endEl.disabled   = false;
+    } else if (period === 'all') {
+        startEl.disabled = true;
+        endEl.disabled   = true;
+        startEl.value    = '';
+        endEl.value      = '';
+    } else {
+        const { startDate, endDate } = periodToDateRange(period);
+        startEl.disabled = true;
+        endEl.disabled   = true;
+        startEl.value    = startDate;
+        endEl.value      = endDate;
+    }
+}
+
 // ---- Event listeners ----
 
 function attachListeners() {
+    document.getElementById('filter-period').addEventListener('change', () => {
+        updatePeriodInputs(document.getElementById('filter-period').value);
+    });
+
     document.getElementById('btn-apply').addEventListener('click', async () => {
-        state.accountId   = document.getElementById('filter-account').value;
-        state.strategyId  = document.getElementById('filter-strategy').value;
-        state.assetClass  = document.getElementById('filter-asset-class').value;
-        state.startDate   = document.getElementById('filter-start').value;
-        state.endDate     = document.getElementById('filter-end').value;
+        const period = document.getElementById('filter-period').value;
+        state.period     = period;
+        state.accountId  = document.getElementById('filter-account').value;
+        state.strategyId = document.getElementById('filter-strategy').value;
+        state.assetClass = document.getElementById('filter-asset-class').value;
+
+        if (period === 'all') {
+            state.startDate = '';
+            state.endDate   = '';
+        } else if (period === 'custom') {
+            state.startDate = document.getElementById('filter-start').value;
+            state.endDate   = document.getElementById('filter-end').value;
+        } else {
+            const range     = periodToDateRange(period);
+            state.startDate = range.startDate;
+            state.endDate   = range.endDate;
+        }
+
         await loadMetrics();
     });
 
     document.getElementById('btn-clear').addEventListener('click', async () => {
-        state = { accountId: '', strategyId: '', assetClass: '', startDate: '', endDate: '' };
-        document.getElementById('filter-account').value    = '';
-        document.getElementById('filter-strategy').value   = '';
+        state = { period: 'all', accountId: '', strategyId: '', assetClass: '', startDate: '', endDate: '' };
+        document.getElementById('filter-period').value      = 'all';
+        document.getElementById('filter-account').value     = '';
+        document.getElementById('filter-strategy').value    = '';
         document.getElementById('filter-asset-class').value = '';
-        document.getElementById('filter-start').value      = '';
-        document.getElementById('filter-end').value        = '';
+        updatePeriodInputs('all');
         await loadMetrics();
     });
 }
@@ -160,6 +257,7 @@ async function loadMetrics() {
             loadRDistribution(),
             loadWinRateByStrategy(),
             loadDisciplineScatter(),
+            loadStreakChart(),
         ]);
     }
 }
@@ -616,6 +714,113 @@ async function loadDisciplineScatter() {
     });
 }
 
+// ---- Streak history chart ----
+
+async function loadStreakChart() {
+    if (_streakChart) { _streakChart.destroy(); _streakChart = null; }
+
+    const container = document.getElementById('streak-chart');
+    if (!container) return;
+
+    const params = new URLSearchParams();
+    if (state.accountId)  params.set('account_id',  state.accountId);
+    if (state.strategyId) params.set('strategy_id', state.strategyId);
+    if (state.assetClass) params.set('asset_class', state.assetClass);
+    if (state.startDate)  params.set('start_date',  state.startDate);
+    if (state.endDate)    params.set('end_date',     state.endDate);
+    const qs = params.toString();
+
+    let data;
+    try {
+        data = await api.get('/api/reports/streak-history' + (qs ? '?' + qs : ''));
+    } catch (err) {
+        container.innerHTML = `<div class="error-state" style="min-height:0;padding:var(--space-3);">Unable to load streak history: ${escHtml(err.message ?? 'Unknown error')}</div>`;
+        return;
+    }
+
+    // Update current-streak KPI placeholder
+    const csEl = document.getElementById('current-streak-kpi');
+    if (csEl) {
+        const valueEl = csEl.querySelector('.kpi-card__value');
+        if (valueEl) valueEl.innerHTML = currentStreakHtml(data.current_streak);
+    }
+
+    const runs = data.runs ?? [];
+    if (runs.length === 0) {
+        container.innerHTML = `<p class="text-muted" style="padding:var(--space-4);font-size:13px;">No streak data for the selected filters.</p>`;
+        return;
+    }
+
+    function _runColor(type) {
+        if (type === 'win')  return '#10B981';
+        if (type === 'loss') return '#EF4444';
+        return '#F59E0B';
+    }
+
+    let canvas = container.querySelector('canvas');
+    if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.id = 'streak-canvas';
+        container.innerHTML = '';
+        container.appendChild(canvas);
+    }
+
+    Chart.defaults.color = '#9CA3AF';
+    Chart.defaults.borderColor = '#2E3140';
+    Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+
+    _streakChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: runs.map((_, i) => `#${i + 1}`),
+            datasets: [{
+                label: 'Run length',
+                data: runs.map(r => r.count),
+                backgroundColor: runs.map(r => _runColor(r.type)),
+                borderColor:     runs.map(r => _runColor(r.type)),
+                borderWidth: 1,
+                borderRadius: 3,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title(items) {
+                            const r = runs[items[0].dataIndex];
+                            return `Run #${items[0].dataIndex + 1} — ${r.type}`;
+                        },
+                        label(item) {
+                            const r = runs[item.dataIndex];
+                            const n = r.count;
+                            const dateRange = r.start_date === r.end_date
+                                ? r.start_date
+                                : `${r.start_date} → ${r.end_date}`;
+                            return [`${n} trade${n === 1 ? '' : 's'}`, dateRange];
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { font: { size: 11 } },
+                    title: { display: true, text: 'Run (chronological)', color: '#6B7280', font: { size: 11 } },
+                },
+                y: {
+                    grid: { color: '#2E3140' },
+                    ticks: { stepSize: 1, precision: 0 },
+                    beginAtZero: true,
+                    title: { display: true, text: 'Trades in run', color: '#6B7280', font: { size: 11 } },
+                },
+            },
+        },
+    });
+}
+
 // ---- Dashboard HTML ----
 
 function renderDashboard(data) {
@@ -666,6 +871,10 @@ function renderDashboard(data) {
                 ${kpiCard('Discipline Score',    disciplineHtml(metrics.discipline_score))}
                 ${kpiCard('Max Win Streak',      streakHtml(metrics.max_consecutive_wins, 'wins'))}
                 ${kpiCard('Max Loss Streak',     streakHtml(metrics.max_consecutive_losses, 'losses'))}
+                <div class="kpi-card" id="current-streak-kpi">
+                    <div class="kpi-card__label">Current Streak</div>
+                    <div class="kpi-card__value"><span class="text-muted">—</span></div>
+                </div>
             </div>
         </div>
 
@@ -696,6 +905,14 @@ function renderDashboard(data) {
             <div class="card-title">Discipline vs Performance</div>
             <div id="discipline-scatter-chart" style="position: relative; height: 320px; margin-top: var(--space-4);">
                 <canvas id="discipline-scatter-canvas"></canvas>
+            </div>
+        </div>
+
+        <!-- Streak History -->
+        <div class="card mb-4">
+            <div class="card-title">Streak History</div>
+            <div id="streak-chart" style="position: relative; height: 260px; margin-top: var(--space-4);">
+                <canvas id="streak-canvas"></canvas>
             </div>
         </div>
 
@@ -772,6 +989,13 @@ function disciplineHtml(v) {
 function streakHtml(v, _type) {
     if (v === null || v === undefined || v === 0) return `<span class="text-muted">0</span>`;
     return `<span>${v}</span>`;
+}
+
+function currentStreakHtml(cs) {
+    if (!cs || !cs.type || cs.count === 0) return DASH;
+    if (cs.type === 'win')  return `<span class="text-success">${cs.count} win${cs.count === 1 ? '' : 's'}</span>`;
+    if (cs.type === 'loss') return `<span class="text-danger">${cs.count} loss${cs.count === 1 ? '' : 'es'}</span>`;
+    return `<span class="text-warning">Breakeven</span>`;
 }
 
 function moneyHtml(v, isPositive) {

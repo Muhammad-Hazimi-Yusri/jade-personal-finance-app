@@ -248,6 +248,68 @@ def calculate_streaks(trades: list[dict]) -> tuple[int, int]:
     return (max_wins, max_losses)
 
 
+def calculate_streak_history(trades: list[dict]) -> dict:
+    """Compute every consecutive win/loss/breakeven run in chronological order.
+
+    Each trade is classified as ``'win'`` (pnl_net > 0), ``'loss'``
+    (pnl_net < 0), or ``'breakeven'`` (pnl_net == 0 or None).  Breakeven
+    trades are always their own single-trade run — they do not extend win or
+    loss streaks.
+
+    Args:
+        trades: List of closed-trade dicts with ``pnl_net``, ``exit_date``,
+                and ``id`` keys, in any order.
+
+    Returns:
+        Dict with keys:
+
+        - ``runs``           — list of ``{type, count, start_date, end_date}``
+        - ``current_streak`` — ``{type, count}`` for the most recent run
+        - ``total_trades``   — int
+    """
+    if not trades:
+        return {"runs": [], "current_streak": {"type": None, "count": 0}, "total_trades": 0}
+
+    sorted_trades = sorted(trades, key=lambda t: (t.get("exit_date") or "", t.get("id", 0)))
+
+    runs: list[dict] = []
+    current: dict | None = None
+
+    for trade in sorted_trades:
+        pnl = trade.get("pnl_net")
+        date = trade.get("exit_date")
+
+        if pnl is None or pnl == 0:
+            result = "breakeven"
+        elif pnl > 0:
+            result = "win"
+        else:
+            result = "loss"
+
+        if result == "breakeven":
+            if current is not None:
+                runs.append(current)
+                current = None
+            runs.append({"type": "breakeven", "count": 1, "start_date": date, "end_date": date})
+        elif current is None:
+            current = {"type": result, "count": 1, "start_date": date, "end_date": date}
+        elif current["type"] == result:
+            current["count"] += 1
+            current["end_date"] = date
+        else:
+            runs.append(current)
+            current = {"type": result, "count": 1, "start_date": date, "end_date": date}
+
+    if current is not None:
+        runs.append(current)
+
+    current_streak = (
+        {"type": runs[-1]["type"], "count": runs[-1]["count"]} if runs
+        else {"type": None, "count": 0}
+    )
+    return {"runs": runs, "current_streak": current_streak, "total_trades": len(sorted_trades)}
+
+
 def calculate_avg_win(trades: list[dict]) -> Optional[int]:
     """Mean P&L of winning trades, in integer pence (truncated).
 
@@ -1070,3 +1132,73 @@ def get_discipline_scatter(
     ]
 
     return {"points": points, "total": len(points)}
+
+
+def get_streak_history(
+    db: sqlite3.Connection,
+    *,
+    account_id: Optional[int] = None,
+    strategy_id: Optional[int] = None,
+    asset_class: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+) -> dict:
+    """Streak run history for closed trades, with optional filters.
+
+    Args:
+        db: Active SQLite connection.
+        account_id: Filter by trading account ID.
+        strategy_id: Filter by strategy ID.
+        asset_class: Filter by asset class string (e.g. ``'stocks'``).
+        start_date: ISO 8601 date — include trades with exit_date >= this.
+        end_date: ISO 8601 date — include trades with exit_date <= this.
+
+    Returns:
+        Dict from :func:`calculate_streak_history`.
+
+    Raises:
+        ValueError: If either date string is not valid ISO 8601, or
+                    start_date > end_date.
+    """
+    from datetime import date as _date
+
+    if start_date is not None:
+        try:
+            _date.fromisoformat(start_date)
+        except ValueError:
+            raise ValueError(f"Invalid start_date: {start_date!r}")
+    if end_date is not None:
+        try:
+            _date.fromisoformat(end_date)
+        except ValueError:
+            raise ValueError(f"Invalid end_date: {end_date!r}")
+    if start_date and end_date and start_date > end_date:
+        raise ValueError("start_date must not be after end_date")
+
+    conditions: list[str] = ["is_open = 0", "exit_date IS NOT NULL"]
+    params: list = []
+
+    if account_id is not None:
+        conditions.append("account_id = ?")
+        params.append(account_id)
+    if strategy_id is not None:
+        conditions.append("strategy_id = ?")
+        params.append(strategy_id)
+    if asset_class is not None:
+        conditions.append("asset_class = ?")
+        params.append(asset_class)
+    if start_date is not None:
+        conditions.append("exit_date >= ?")
+        params.append(start_date)
+    if end_date is not None:
+        conditions.append("exit_date <= ?")
+        params.append(end_date)
+
+    where = " AND ".join(conditions)
+    rows = db.execute(
+        f"SELECT id, pnl_net, exit_date FROM trades WHERE {where} ORDER BY exit_date ASC, id ASC",
+        params,
+    ).fetchall()
+
+    trades = [dict(row) for row in rows]
+    return calculate_streak_history(trades)

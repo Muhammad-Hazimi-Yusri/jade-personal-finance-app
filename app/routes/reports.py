@@ -265,3 +265,43 @@ def discipline_scatter_report():
         return jsonify({"error": str(exc)}), 422
 
     return jsonify(data), 200
+
+
+@bp.get("/streak-history")
+def streak_history_report():
+    """Streak run history for closed trades.
+
+    Each consecutive run of wins, losses, or breakeven trades is returned in
+    chronological order, along with the current (most recent) active streak.
+
+    Query params:
+        account_id (int): Filter by trading account.
+        strategy_id (int): Filter by strategy.
+        asset_class (str): Filter by asset class (e.g. stocks, forex, crypto).
+        start_date (str): ISO 8601 date — include trades with exit_date >= this.
+        end_date (str): ISO 8601 date — include trades with exit_date <= this.
+
+    Returns:
+        JSON with ``runs`` list, ``current_streak`` dict, and ``total_trades``
+        int.  Each run: ``{type, count, start_date, end_date}``.
+        ``current_streak``: ``{type, count}``.
+    """
+    account_id  = request.args.get("account_id",  None, type=int)
+    strategy_id = request.args.get("strategy_id", None, type=int)
+    asset_class = request.args.get("asset_class", None, type=str)
+    start_date  = request.args.get("start_date",  None, type=str)
+    end_date    = request.args.get("end_date",    None, type=str)
+
+    try:
+        data = metrics_service.get_streak_history(
+            get_db(),
+            account_id=account_id,
+            strategy_id=strategy_id,
+            asset_class=asset_class,
+            start_date=start_date,
+            end_date=end_date,
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 422
+
+    return jsonify(data), 200

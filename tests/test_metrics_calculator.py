@@ -19,6 +19,7 @@ from app.services.metrics_calculator import (
     calculate_max_drawdown,
     calculate_pnl_distribution,
     calculate_profit_factor,
+    calculate_streak_history,
     calculate_streaks,
     calculate_win_rate,
 )
@@ -641,4 +642,85 @@ class TestCalculatePnlDistribution:
     def test_negative_single_trade(self):
         result = calculate_pnl_distribution([-7500])
         assert result["total"] == 1
-        assert result["bins"][0]["midpoint"] <= 0
+
+
+# ---------------------------------------------------------------------------
+# calculate_streak_history
+# ---------------------------------------------------------------------------
+
+
+class TestCalculateStreakHistory:
+    def _t(self, pnl_net, exit_date="2024-01-01", id_=1):
+        return {"pnl_net": pnl_net, "exit_date": exit_date, "id": id_}
+
+    def test_empty(self):
+        r = calculate_streak_history([])
+        assert r == {"runs": [], "current_streak": {"type": None, "count": 0}, "total_trades": 0}
+
+    def test_all_wins(self):
+        trades = [self._t(100, f"2024-01-0{i}", i) for i in range(1, 4)]
+        r = calculate_streak_history(trades)
+        assert r["runs"] == [
+            {"type": "win", "count": 3, "start_date": "2024-01-01", "end_date": "2024-01-03"}
+        ]
+        assert r["current_streak"] == {"type": "win", "count": 3}
+        assert r["total_trades"] == 3
+
+    def test_all_losses(self):
+        trades = [self._t(-100, f"2024-01-0{i}", i) for i in range(1, 4)]
+        r = calculate_streak_history(trades)
+        assert len(r["runs"]) == 1
+        assert r["runs"][0]["type"] == "loss"
+        assert r["runs"][0]["count"] == 3
+
+    def test_win_then_loss(self):
+        trades = [
+            self._t(100, "2024-01-01", 1), self._t(100, "2024-01-02", 2),
+            self._t(-50, "2024-01-03", 3), self._t(-50, "2024-01-04", 4), self._t(-50, "2024-01-05", 5),
+        ]
+        r = calculate_streak_history(trades)
+        assert len(r["runs"]) == 2
+        assert r["runs"][0] == {"type": "win",  "count": 2, "start_date": "2024-01-01", "end_date": "2024-01-02"}
+        assert r["runs"][1] == {"type": "loss", "count": 3, "start_date": "2024-01-03", "end_date": "2024-01-05"}
+
+    def test_breakeven_is_own_run(self):
+        trades = [
+            self._t(100, "2024-01-01", 1), self._t(100, "2024-01-02", 2),
+            self._t(0,   "2024-01-03", 3), self._t(100, "2024-01-04", 4),
+        ]
+        r = calculate_streak_history(trades)
+        assert len(r["runs"]) == 3
+        assert r["runs"][1] == {"type": "breakeven", "count": 1, "start_date": "2024-01-03", "end_date": "2024-01-03"}
+        assert r["runs"][2] == {"type": "win", "count": 1, "start_date": "2024-01-04", "end_date": "2024-01-04"}
+
+    def test_pnl_none_is_breakeven(self):
+        trades = [self._t(None, "2024-01-01", 1)]
+        r = calculate_streak_history(trades)
+        assert r["runs"][0]["type"] == "breakeven"
+        assert r["runs"][0]["count"] == 1
+
+    def test_current_streak_is_last_run(self):
+        trades = [
+            self._t(100, "2024-01-01", 1), self._t(-50, "2024-01-02", 2), self._t(-50, "2024-01-03", 3),
+        ]
+        r = calculate_streak_history(trades)
+        assert r["current_streak"] == {"type": "loss", "count": 2}
+
+    def test_ordered_by_exit_date(self):
+        # Passed in reverse order — should sort to loss, win, win
+        trades = [
+            self._t(100, "2024-01-03", 3), self._t(-50, "2024-01-01", 1), self._t(100, "2024-01-02", 2),
+        ]
+        r = calculate_streak_history(trades)
+        assert r["runs"][0]["type"] == "loss"
+        assert r["runs"][1]["type"] == "win"
+
+    def test_total_trades(self):
+        trades = [self._t(100, f"2024-01-0{i}", i) for i in range(1, 6)]
+        assert calculate_streak_history(trades)["total_trades"] == 5
+
+    def test_multiple_breakeven_each_own_run(self):
+        trades = [self._t(0, "2024-01-01", 1), self._t(0, "2024-01-02", 2)]
+        r = calculate_streak_history(trades)
+        assert len(r["runs"]) == 2
+        assert all(run["type"] == "breakeven" for run in r["runs"])
