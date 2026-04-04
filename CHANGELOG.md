@@ -15,6 +15,28 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.5.7] — 2026-04-04
+
+### Added
+
+#### Phase 5.7 — Win rate by strategy breakdown
+
+- New **`GET /api/reports/win-rate-by-strategy`** endpoint — returns win/loss
+  counts and win rate percentage grouped by strategy for closed trades.
+  Accepts the same filter params as other report endpoints
+  (`account_id`, `strategy_id`, `asset_class`, `start_date`, `end_date`).
+- New **`get_win_rate_by_strategy()`** function in
+  `app/services/metrics_calculator.py` — queries trades joined with the
+  strategies table (LEFT JOIN), groups by `strategy_id`, and computes
+  `win_rate` per group in Python.  Trades with no strategy are labelled
+  `"No strategy"`.
+- New **Win Rate by Strategy** card on the analytics dashboard — Chart.js
+  horizontal bar chart showing win rate (%) per strategy.  Bar colour
+  indicates performance: green (≥60%), amber (40–59%), red (<40%).
+  Tooltip shows wins, losses, and total trade count per strategy.
+
+---
+
 ## [0.5.4] — 2026-04-03
 
 ### Added

@@ -870,3 +870,103 @@ def get_r_distribution(
 
     rows = db.execute(sql, params).fetchall()
     return calculate_r_distribution([row["r_multiple"] for row in rows])
+
+
+def get_win_rate_by_strategy(
+    db: sqlite3.Connection,
+    *,
+    account_id: Optional[int] = None,
+    strategy_id: Optional[int] = None,
+    asset_class: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+) -> dict:
+    """Win rate breakdown grouped by strategy for closed trades.
+
+    Joins trades with the strategies table to resolve names.  Trades with no
+    strategy are grouped under the label ``"No strategy"``.
+
+    Args:
+        db: Active SQLite connection.
+        account_id: Filter to a specific trading account.
+        strategy_id: Filter to a specific strategy.
+        asset_class: Filter to a specific asset class.
+        start_date: ISO 8601 lower bound on exit_date (inclusive).
+        end_date: ISO 8601 upper bound on exit_date (inclusive).
+
+    Returns:
+        Dict with a ``strategies`` key containing a list of dicts, each with
+        ``strategy_id``, ``strategy_name``, ``total``, ``wins``, ``losses``,
+        ``breakeven``, and ``win_rate`` (float, 0–100).  Sorted by total
+        trades descending.
+
+    Raises:
+        ValueError: If date strings are invalid or start_date > end_date.
+    """
+    if start_date is not None:
+        try:
+            date.fromisoformat(start_date)
+        except ValueError:
+            raise ValueError("start_date must be a valid ISO 8601 date (YYYY-MM-DD)")
+    if end_date is not None:
+        try:
+            date.fromisoformat(end_date)
+        except ValueError:
+            raise ValueError("end_date must be a valid ISO 8601 date (YYYY-MM-DD)")
+    if start_date is not None and end_date is not None:
+        if date.fromisoformat(start_date) > date.fromisoformat(end_date):
+            raise ValueError("start_date must be on or before end_date")
+
+    conditions = ["t.is_open = 0", "t.exit_date IS NOT NULL", "t.pnl_net IS NOT NULL"]
+    params: list = []
+
+    if account_id is not None:
+        conditions.append("t.account_id = ?")
+        params.append(account_id)
+    if strategy_id is not None:
+        conditions.append("t.strategy_id = ?")
+        params.append(strategy_id)
+    if asset_class is not None:
+        conditions.append("t.asset_class = ?")
+        params.append(asset_class)
+    if start_date is not None:
+        conditions.append("t.exit_date >= ?")
+        params.append(start_date)
+    if end_date is not None:
+        conditions.append("t.exit_date <= ?")
+        params.append(end_date)
+
+    where_clause = " AND ".join(conditions)
+    sql = f"""
+        SELECT
+            t.strategy_id,
+            COALESCE(s.name, 'No strategy') AS strategy_name,
+            COUNT(*) AS total,
+            SUM(CASE WHEN t.pnl_net > 0 THEN 1 ELSE 0 END) AS wins,
+            SUM(CASE WHEN t.pnl_net < 0 THEN 1 ELSE 0 END) AS losses,
+            SUM(CASE WHEN t.pnl_net = 0 THEN 1 ELSE 0 END) AS breakeven
+        FROM trades t
+        LEFT JOIN strategies s ON t.strategy_id = s.id
+        WHERE {where_clause}
+        GROUP BY t.strategy_id
+        ORDER BY total DESC
+    """  # noqa: S608 — where_clause built from literals only, no user data
+
+    rows = db.execute(sql, params).fetchall()
+
+    strategies = []
+    for row in rows:
+        total = row["total"]
+        wins = row["wins"]
+        win_rate = round(wins / total * 100, 1) if total > 0 else 0.0
+        strategies.append({
+            "strategy_id": row["strategy_id"],
+            "strategy_name": row["strategy_name"],
+            "total": total,
+            "wins": wins,
+            "losses": row["losses"],
+            "breakeven": row["breakeven"],
+            "win_rate": win_rate,
+        })
+
+    return {"strategies": strategies}

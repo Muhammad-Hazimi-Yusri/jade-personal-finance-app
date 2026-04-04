@@ -1494,7 +1494,7 @@ def run_migrations(db_path):
 - [x] **5.4** Equity curve with TradingView Lightweight Charts
 - [x] **5.5** P&L distribution histogram
 - [x] **5.6** R-multiple histogram
-- [ ] **5.7** Win rate by strategy breakdown
+- [x] **5.7** Win rate by strategy breakdown
 - [ ] **5.8** Discipline vs performance scatter chart
 - [ ] **5.9** Streak tracking (consecutive wins/losses)
 - [ ] **5.10** Filterable reports by period, account, asset class, strategy

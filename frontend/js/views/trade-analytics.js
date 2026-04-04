@@ -23,6 +23,8 @@ let _resizeObserver = null;
 let _histChart = null;
 // R-multiple distribution histogram — Chart.js instance, destroyed before each reload
 let _rDistChart = null;
+// Win rate by strategy chart — Chart.js instance, destroyed before each reload
+let _strategyChart = null;
 
 // ---- Render entry point ----
 
@@ -154,6 +156,7 @@ async function loadMetrics() {
             loadEquityCurve(),
             loadPnlDistribution(),
             loadRDistribution(),
+            loadWinRateByStrategy(),
         ]);
     }
 }
@@ -409,6 +412,103 @@ async function loadRDistribution() {
     });
 }
 
+// ---- Win rate by strategy chart ----
+
+async function loadWinRateByStrategy() {
+    if (_strategyChart) { _strategyChart.destroy(); _strategyChart = null; }
+
+    const container = document.getElementById('strategy-chart');
+    if (!container) return;
+
+    const params = new URLSearchParams();
+    if (state.accountId)  params.set('account_id',  state.accountId);
+    if (state.strategyId) params.set('strategy_id', state.strategyId);
+    if (state.assetClass) params.set('asset_class', state.assetClass);
+    if (state.startDate)  params.set('start_date',  state.startDate);
+    if (state.endDate)    params.set('end_date',     state.endDate);
+
+    const qs = params.toString();
+    let strategies;
+    try {
+        const data = await api.get('/api/reports/win-rate-by-strategy' + (qs ? '?' + qs : ''));
+        strategies = data.strategies ?? [];
+    } catch (err) {
+        container.innerHTML = `<div class="error-state" style="min-height:0;padding:var(--space-3);">Unable to load win rate by strategy: ${escHtml(err.message ?? 'Unknown error')}</div>`;
+        return;
+    }
+
+    if (strategies.length === 0) {
+        container.innerHTML = `<p class="text-muted" style="padding:var(--space-4);font-size:13px;">No strategy data for the selected filters.</p>`;
+        return;
+    }
+
+    function _barColor(winRate) {
+        if (winRate >= 60) return '#10B981';
+        if (winRate >= 40) return '#F59E0B';
+        return '#EF4444';
+    }
+
+    const height = Math.max(200, strategies.length * 52);
+    container.style.height = height + 'px';
+
+    let canvas = container.querySelector('canvas');
+    if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.id = 'strategy-canvas';
+        container.innerHTML = '';
+        container.appendChild(canvas);
+    }
+
+    Chart.defaults.color = '#9CA3AF';
+    Chart.defaults.borderColor = '#2E3140';
+    Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+
+    _strategyChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: strategies.map(s => s.strategy_name),
+            datasets: [{
+                label: 'Win Rate',
+                data: strategies.map(s => s.win_rate),
+                backgroundColor: strategies.map(s => _barColor(s.win_rate)),
+                borderColor:     strategies.map(s => _barColor(s.win_rate)),
+                borderWidth: 1,
+                borderRadius: 3,
+            }],
+        },
+        options: {
+            indexAxis: 'y',
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title(items) { return items[0].label; },
+                        label(item) {
+                            const s = strategies[item.dataIndex];
+                            return `${s.wins}W / ${s.losses}L / ${s.total} trades — ${s.win_rate}%`;
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    min: 0,
+                    max: 100,
+                    grid: { color: '#2E3140' },
+                    ticks: { callback: v => v + '%', font: { size: 11 } },
+                    title: { display: true, text: 'Win Rate (%)', color: '#6B7280', font: { size: 11 } },
+                },
+                y: {
+                    grid: { display: false },
+                    ticks: { font: { size: 12 } },
+                },
+            },
+        },
+    });
+}
+
 // ---- Dashboard HTML ----
 
 function renderDashboard(data) {
@@ -476,6 +576,12 @@ function renderDashboard(data) {
             <div id="r-dist-chart" style="position: relative; height: 260px; margin-top: var(--space-4);">
                 <canvas id="r-dist-canvas"></canvas>
             </div>
+        </div>
+
+        <!-- Win Rate by Strategy -->
+        <div class="card mb-4">
+            <div class="card-title">Win Rate by Strategy</div>
+            <div id="strategy-chart" style="position: relative; margin-top: var(--space-4);"></div>
         </div>
 
         <!-- Trade P&L breakdown -->

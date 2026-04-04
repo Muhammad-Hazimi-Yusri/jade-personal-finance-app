@@ -188,3 +188,40 @@ def r_distribution_report():
         return jsonify({"error": str(exc)}), 422
 
     return jsonify(data), 200
+
+
+@bp.get("/win-rate-by-strategy")
+def win_rate_by_strategy_report():
+    """Win rate breakdown grouped by strategy for closed trades.
+
+    Query params:
+        account_id (int): Filter by trading account.
+        strategy_id (int): Filter by strategy.
+        asset_class (str): Filter by asset class (e.g. stocks, forex, crypto).
+        start_date (str): ISO 8601 date — include trades with exit_date >= this.
+        end_date (str): ISO 8601 date — include trades with exit_date <= this.
+
+    Returns:
+        JSON with a ``strategies`` list.  Each entry contains
+        ``strategy_id``, ``strategy_name``, ``total``, ``wins``, ``losses``,
+        ``breakeven``, and ``win_rate`` (float 0–100).
+    """
+    account_id  = request.args.get("account_id",  None, type=int)
+    strategy_id = request.args.get("strategy_id", None, type=int)
+    asset_class = request.args.get("asset_class", None, type=str)
+    start_date  = request.args.get("start_date",  None, type=str)
+    end_date    = request.args.get("end_date",    None, type=str)
+
+    try:
+        data = metrics_service.get_win_rate_by_strategy(
+            get_db(),
+            account_id=account_id,
+            strategy_id=strategy_id,
+            asset_class=asset_class,
+            start_date=start_date,
+            end_date=end_date,
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 422
+
+    return jsonify(data), 200
