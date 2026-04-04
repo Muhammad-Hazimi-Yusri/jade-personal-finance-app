@@ -14,6 +14,12 @@ services:
     environment:
       - FLASK_ENV=production
       - DATABASE_PATH=/app/data/jade.db
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   # === PUBLIC DEMO (no auth, resets daily) ===
   jade-demo:
@@ -29,6 +35,12 @@ services:
       - FLASK_ENV=production
       - DATABASE_PATH=/app/data/jade.db
       - DEMO_MODE=true
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
   jade-demo-reset:
     image: alpine:3

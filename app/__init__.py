@@ -4,10 +4,11 @@ Flask application factory.
 """
 
 import os
+from pathlib import Path
 
-__version__ = "0.5.2"
+__version__ = "0.6.2"
 
-from flask import Flask, send_from_directory
+from flask import Flask, jsonify, send_from_directory
 
 from .db import close_db, init_db
 
@@ -85,17 +86,35 @@ def create_app(test_config: dict | None = None) -> Flask:
     app.register_blueprint(snapshots_bp)
 
     # --- Serve frontend ---
-    frontend_dir = os.path.join(os.path.dirname(os.path.dirname(__file__)), "frontend")
+    frontend_dir = Path(__file__).parent.parent / "frontend"
+
+    @app.route("/health")
+    def health():
+        """Docker / load-balancer health check endpoint."""
+        return jsonify({"status": "ok"})
 
     @app.route("/")
     def index():
         """Serve the SPA entry point."""
-        return send_from_directory(frontend_dir, "index.html")
+        response = send_from_directory(frontend_dir, "index.html")
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
+        return response
 
     @app.route("/<path:filename>")
     def static_files(filename: str):
-        """Serve static frontend assets."""
-        return send_from_directory(frontend_dir, filename)
+        """Serve static frontend assets.
+
+        Cache-Control strategy:
+          - HTML files: no-cache (always revalidate — ensures fresh app shell)
+          - CSS / JS / other: public, max-age=3600 (1 hour; ETags handle
+            revalidation when content changes)
+        """
+        response = send_from_directory(frontend_dir, filename)
+        if filename.endswith(".html"):
+            response.headers["Cache-Control"] = "no-cache, must-revalidate"
+        else:
+            response.headers["Cache-Control"] = "public, max-age=3600"
+        return response
 
     # --- Security headers ---
     @app.after_request

@@ -145,6 +145,7 @@ jade/
 ├── ✅ Dockerfile                # Flask app container (Phase 6)
 ├── ✅ .env.example              # Environment variable template (Phase 6)
 ├── ✅ litestream.yml            # Database backup config (Phase 6)
+├── ✅ wsgi.py                   # Gunicorn WSGI entry point (Phase 6)
 ├── ✅ requirements.txt          # Python dependencies (Phase 1)
 │
 ├── ✅ app/                      # Flask application (Phase 1)
@@ -1503,7 +1504,7 @@ def run_migrations(db_path):
 > Docker, Cloudflare Tunnel, demo mode, backups, and final touches.
 
 - [x] **6.1** Dockerfile and docker-compose.yml (production + demo containers)
-- [ ] **6.2** Flask static file serving (frontend served by Flask, no separate web server)
+- [x] **6.2** Flask static file serving (frontend served by Flask, no separate web server)
 - [ ] **6.3** `DEMO_MODE` flag: banner display + response header
 - [ ] **6.4** Demo seed data script (`demo-data/seed.sql`) with ~500 transactions, ~85 trades, journals
 - [ ] **6.5** Build `seed.db` from seed script, configure daily reset container
