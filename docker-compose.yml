@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # === PRODUCTION (behind Cloudflare Access) ===
+  jade-app:
+    build: .
+    container_name: jade-app
+    restart: unless-stopped
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./data:/app/data
+      - ./frontend:/app/frontend
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_PATH=/app/data/jade.db
+
+  # === PUBLIC DEMO (no auth, resets daily) ===
+  jade-demo:
+    build: .
+    container_name: jade-demo
+    restart: unless-stopped
+    ports:
+      - "8001:8000"
+    volumes:
+      - ./demo-data:/app/data
+      - ./frontend:/app/frontend
+    environment:
+      - FLASK_ENV=production
+      - DATABASE_PATH=/app/data/jade.db
+      - DEMO_MODE=true
+
+  jade-demo-reset:
+    image: alpine:3
+    container_name: jade-demo-reset
+    restart: unless-stopped
+    volumes:
+      - ./demo-data:/data
+    entrypoint: /bin/sh
+    command: >
+      -c "while true; do
+        sleep 86400;
+        cp /data/seed.db /data/jade.db;
+        echo 'Demo database reset at $$(date)';
+      done"
+    depends_on:
+      - jade-demo
+
+  # === BACKUP ===
+  litestream:
+    image: litestream/litestream:latest
+    container_name: jade-litestream
+    restart: unless-stopped
+    volumes:
+      - ./data:/app/data
+      - ./litestream.yml:/etc/litestream.yml
+    environment:
+      - LITESTREAM_ACCESS_KEY_ID=${S3_ACCESS_KEY}
+      - LITESTREAM_SECRET_ACCESS_KEY=${S3_SECRET_KEY}
+    command: replicate
+    depends_on:
+      - jade-app

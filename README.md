@@ -141,10 +141,10 @@ jade/
 ├── ✅ CHANGELOG.md              # Version history (Keep a Changelog format)
 ├── ✅ VERSION                   # Semver version string
 ├── ✅ .gitignore
-├── 🔲 docker-compose.yml        # Deployment orchestration (Phase 6)
-├── 🔲 Dockerfile                # Flask app container (Phase 6)
-├── 🔲 .env.example              # Environment variable template (Phase 6)
-├── 🔲 litestream.yml            # Database backup config (Phase 6)
+├── ✅ docker-compose.yml        # Deployment orchestration (Phase 6)
+├── ✅ Dockerfile                # Flask app container (Phase 6)
+├── ✅ .env.example              # Environment variable template (Phase 6)
+├── ✅ litestream.yml            # Database backup config (Phase 6)
 ├── ✅ requirements.txt          # Python dependencies (Phase 1)
 │
 ├── ✅ app/                      # Flask application (Phase 1)
@@ -719,7 +719,7 @@ All responses use JSON. All monetary values are returned as decimals (e.g., `5.1
 | `GET` | `/api/reports/pnl-distribution` | P&L histogram bins (auto-binned, colour-coded) |
 | `GET` | `/api/reports/r-distribution` | R-multiple histogram bins (auto-binned, colour-coded) |
 | `GET` | `/api/reports/discipline` | Psychology/discipline correlation analysis |
-| `GET` | `/api/reports/streaks` | Win/loss streak tracking |
+| `GET` | `/api/reports/streak-history` | Streak run history: consecutive runs, current streak |
 
 **Common query parameters for reports:**
 
@@ -1432,7 +1432,7 @@ def run_migrations(db_path):
 
 ## Development Roadmap
 
-> **Current Phase: Phase 5 — Trading Analytics**
+> **Current Phase: Phase 6 — Deployment & Polish**
 >
 > When completing a task, update this README: check the box `[x]` and update the Project Structure status icons from 🔲 to ✅ for any files created.
 
@@ -1496,13 +1496,13 @@ def run_migrations(db_path):
 - [x] **5.6** R-multiple histogram
 - [x] **5.7** Win rate by strategy breakdown
 - [x] **5.8** Discipline vs performance scatter chart
-- [ ] **5.9** Streak tracking (consecutive wins/losses)
-- [ ] **5.10** Filterable reports by period, account, asset class, strategy
+- [x] **5.9** Streak tracking (consecutive wins/losses)
+- [x] **5.10** Filterable reports by period, account, asset class, strategy
 
 ### Phase 6: Deployment & Polish
 > Docker, Cloudflare Tunnel, demo mode, backups, and final touches.
 
-- [ ] **6.1** Dockerfile and docker-compose.yml (production + demo containers)
+- [x] **6.1** Dockerfile and docker-compose.yml (production + demo containers)
 - [ ] **6.2** Flask static file serving (frontend served by Flask, no separate web server)
 - [ ] **6.3** `DEMO_MODE` flag: banner display + response header
 - [ ] **6.4** Demo seed data script (`demo-data/seed.sql`) with ~500 transactions, ~85 trades, journals
