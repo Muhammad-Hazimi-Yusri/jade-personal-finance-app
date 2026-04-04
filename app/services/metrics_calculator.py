@@ -9,6 +9,7 @@ These are pure functions with no side effects and no database access.
 ``get_trading_performance`` is the only function that touches the DB.
 """
 
+import math
 import sqlite3
 from datetime import date
 from typing import Optional
@@ -22,6 +23,26 @@ from typing import Optional
 def _from_pence(pence: int) -> float:
     """Convert integer pence to a decimal float for API responses."""
     return round(pence / 100, 2)
+
+
+def _nice_width(raw: float) -> int:
+    """Round a raw bin width in pence to a human-readable step."""
+    nice_steps = [1, 2, 5, 10, 20, 25, 50, 100, 200, 250, 500,
+                  1000, 2000, 2500, 5000, 10000, 20000, 50000,
+                  100000, 200000, 500000]
+    for step in nice_steps:
+        if step >= raw:
+            return step
+    return int(raw)
+
+
+def _format_bin_label(lo_pence: int, hi_pence: int) -> str:
+    """Format a bin range as a GBP string, e.g. '£-100 to £-50'."""
+    def _fmt(p: int) -> str:
+        pounds = p / 100
+        sign = "-" if pounds < 0 else ""
+        return f"£{sign}{abs(pounds):.0f}"
+    return f"{_fmt(lo_pence)} to {_fmt(hi_pence)}"
 
 
 # ---------------------------------------------------------------------------
@@ -331,6 +352,76 @@ def calculate_discipline_score(trades: list[dict]) -> Optional[float]:
     return round(sum(scores) / len(scores), 1)
 
 
+def calculate_pnl_distribution(values: list[int]) -> dict:
+    """Compute histogram bin data from a list of pnl_net pence values.
+
+    Bins are auto-sized using Sturges' rule (capped at 20), then snapped to a
+    human-readable step via ``_nice_width``.  All monetary values in the
+    returned dicts are decimal pounds (already divided by 100).
+
+    Args:
+        values: Flat list of pnl_net values in integer pence for closed trades.
+
+    Returns:
+        Dict with ``bins`` (list of bin dicts) and ``total`` (int trade count).
+        Each bin dict contains: ``label``, ``min``, ``max``, ``count``,
+        ``midpoint`` — all monetary values in decimal pounds.
+    """
+    n = len(values)
+    if n == 0:
+        return {"bins": [], "total": 0}
+
+    lo = min(values)
+    hi = max(values)
+
+    # Edge case: all trades at the same P&L — produce one bin
+    if lo == hi:
+        return {
+            "bins": [{
+                "label": _format_bin_label(lo, lo),
+                "min": round(lo / 100, 2),
+                "max": round(lo / 100, 2),
+                "count": n,
+                "midpoint": round(lo / 100, 2),
+            }],
+            "total": n,
+        }
+
+    # Sturges' rule, capped at 20 bins
+    k = min(math.ceil(math.log2(n)) + 1, 20)
+    raw_width = (hi - lo) / k
+    bin_width = _nice_width(raw_width)
+
+    # Grid-align the lower bound so bin edges land on round numbers
+    bin_lo = math.floor(lo / bin_width) * bin_width
+
+    bins: list[dict] = []
+    edge = bin_lo
+    while True:
+        bin_hi = edge + bin_width
+        # Last bin is inclusive on upper bound to capture hi exactly
+        if bin_hi >= hi:
+            count = sum(1 for v in values if edge <= v <= hi)
+        else:
+            count = sum(1 for v in values if edge <= v < bin_hi)
+        midpoint = (edge + bin_hi) / 2 / 100
+        bins.append({
+            "label": _format_bin_label(edge, bin_hi),
+            "min": round(edge / 100, 2),
+            "max": round(bin_hi / 100, 2),
+            "count": count,
+            "midpoint": round(midpoint, 2),
+        })
+        edge = bin_hi
+        if edge >= hi:
+            break
+
+    # Drop bins that fall entirely outside the data range
+    bins = [b for b in bins if b["min"] <= round(hi / 100, 2) and b["max"] >= round(lo / 100, 2)]
+
+    return {"bins": bins, "total": n}
+
+
 # ---------------------------------------------------------------------------
 # DB-facing orchestrator
 # ---------------------------------------------------------------------------
@@ -543,3 +634,78 @@ def get_equity_curve(
         })
 
     return {"points": points}
+
+
+def get_pnl_distribution(
+    db: sqlite3.Connection,
+    *,
+    account_id: Optional[int] = None,
+    strategy_id: Optional[int] = None,
+    asset_class: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+) -> dict:
+    """P&L distribution histogram bins from closed trades.
+
+    Fetches all pnl_net values for closed trades matching the filters, then
+    delegates to ``calculate_pnl_distribution`` for bin computation.
+
+    Args:
+        db: Active SQLite connection.
+        account_id: Filter to a specific trading account.
+        strategy_id: Filter to a specific strategy.
+        asset_class: Filter to a specific asset class.
+        start_date: ISO 8601 lower bound on exit_date (inclusive).
+        end_date: ISO 8601 upper bound on exit_date (inclusive).
+
+    Returns:
+        Dict with ``bins`` list and ``total`` int.  Each bin contains
+        ``label``, ``min``, ``max``, ``count``, and ``midpoint`` (all monetary
+        values in decimal pounds).
+
+    Raises:
+        ValueError: If date strings are invalid or start_date > end_date.
+    """
+    if start_date is not None:
+        try:
+            date.fromisoformat(start_date)
+        except ValueError:
+            raise ValueError("start_date must be a valid ISO 8601 date (YYYY-MM-DD)")
+    if end_date is not None:
+        try:
+            date.fromisoformat(end_date)
+        except ValueError:
+            raise ValueError("end_date must be a valid ISO 8601 date (YYYY-MM-DD)")
+    if start_date is not None and end_date is not None:
+        if date.fromisoformat(start_date) > date.fromisoformat(end_date):
+            raise ValueError("start_date must be on or before end_date")
+
+    conditions = ["is_open = 0", "exit_date IS NOT NULL", "pnl_net IS NOT NULL"]
+    params: list = []
+
+    if account_id is not None:
+        conditions.append("account_id = ?")
+        params.append(account_id)
+    if strategy_id is not None:
+        conditions.append("strategy_id = ?")
+        params.append(strategy_id)
+    if asset_class is not None:
+        conditions.append("asset_class = ?")
+        params.append(asset_class)
+    if start_date is not None:
+        conditions.append("exit_date >= ?")
+        params.append(start_date)
+    if end_date is not None:
+        conditions.append("exit_date <= ?")
+        params.append(end_date)
+
+    where_clause = " AND ".join(conditions)
+    sql = f"""
+        SELECT pnl_net
+        FROM trades
+        WHERE {where_clause}
+        ORDER BY pnl_net ASC
+    """  # noqa: S608 — where_clause built from literals only, no user data
+
+    rows = db.execute(sql, params).fetchall()
+    return calculate_pnl_distribution([row["pnl_net"] for row in rows])

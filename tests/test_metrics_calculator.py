@@ -17,6 +17,7 @@ from app.services.metrics_calculator import (
     calculate_largest_loss,
     calculate_largest_win,
     calculate_max_drawdown,
+    calculate_pnl_distribution,
     calculate_profit_factor,
     calculate_streaks,
     calculate_win_rate,
@@ -564,3 +565,80 @@ class TestCalculateDisciplineScore:
     def test_returns_float(self):
         result = calculate_discipline_score([_trade(100, rules_followed_pct=75.0)])
         assert isinstance(result, float)
+
+
+class TestCalculatePnlDistribution:
+    def test_empty_returns_empty(self):
+        result = calculate_pnl_distribution([])
+        assert result == {"bins": [], "total": 0}
+
+    def test_single_trade(self):
+        result = calculate_pnl_distribution([10000])
+        assert result["total"] == 1
+        assert len(result["bins"]) == 1
+        assert result["bins"][0]["count"] == 1
+
+    def test_all_same_value(self):
+        result = calculate_pnl_distribution([5000, 5000, 5000])
+        assert result["total"] == 3
+        assert len(result["bins"]) == 1
+        assert result["bins"][0]["count"] == 3
+
+    def test_all_losses(self):
+        values = [-30000, -20000, -10000, -5000, -1000]
+        result = calculate_pnl_distribution(values)
+        assert result["total"] == 5
+        for b in result["bins"]:
+            assert b["midpoint"] < 0
+
+    def test_all_wins(self):
+        values = [1000, 5000, 10000, 20000, 30000]
+        result = calculate_pnl_distribution(values)
+        assert result["total"] == 5
+        for b in result["bins"]:
+            assert b["midpoint"] > 0
+
+    def test_mixed_signs_has_both_sides(self):
+        values = [-20000, -10000, 0, 10000, 20000]
+        result = calculate_pnl_distribution(values)
+        has_loss_bin = any(b["midpoint"] < 0 for b in result["bins"])
+        has_win_bin = any(b["midpoint"] > 0 for b in result["bins"])
+        assert has_loss_bin
+        assert has_win_bin
+
+    def test_total_equals_input_length(self):
+        values = [-500, -100, 0, 200, 800, 1500]
+        result = calculate_pnl_distribution(values)
+        assert result["total"] == len(values)
+
+    def test_count_sum_equals_total(self):
+        values = [-300, -100, 100, 200, 500, 1000, 1500, -50]
+        result = calculate_pnl_distribution(values)
+        assert sum(b["count"] for b in result["bins"]) == result["total"]
+
+    def test_bin_count_capped_at_20(self):
+        # 1000 distinct values — Sturges would give >20 without the cap
+        values = list(range(-50000, 50000, 100))  # 1000 values
+        result = calculate_pnl_distribution(values)
+        assert len(result["bins"]) <= 20
+
+    def test_midpoints_are_decimal_pounds(self):
+        # 1000p = £10.00; midpoint should be in pounds range, not pence
+        values = [80000, 90000, 100000, 110000, 120000]
+        result = calculate_pnl_distribution(values)
+        for b in result["bins"]:
+            assert abs(b["midpoint"]) < 10000  # not in pence (would be ~100000)
+
+    def test_bins_have_required_keys(self):
+        result = calculate_pnl_distribution([10000, 20000, -5000])
+        for b in result["bins"]:
+            assert "label" in b
+            assert "min" in b
+            assert "max" in b
+            assert "count" in b
+            assert "midpoint" in b
+
+    def test_negative_single_trade(self):
+        result = calculate_pnl_distribution([-7500])
+        assert result["total"] == 1
+        assert result["bins"][0]["midpoint"] <= 0

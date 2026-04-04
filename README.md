@@ -716,7 +716,8 @@ All responses use JSON. All monetary values are returned as decimals (e.g., `5.1
 | `GET` | `/api/reports/net-worth` | Net worth trend (account snapshots) |
 | `GET` | `/api/reports/trading-performance` | Win rate, profit factor, expectancy, etc. |
 | `GET` | `/api/reports/equity-curve` | Equity curve data for chart |
-| `GET` | `/api/reports/trade-distribution` | P&L distribution, R-multiple histogram |
+| `GET` | `/api/reports/pnl-distribution` | P&L histogram bins (auto-binned, colour-coded) |
+| `GET` | `/api/reports/r-distribution` | R-multiple histogram (Phase 5.6) |
 | `GET` | `/api/reports/discipline` | Psychology/discipline correlation analysis |
 | `GET` | `/api/reports/streaks` | Win/loss streak tracking |
 
@@ -1491,7 +1492,7 @@ def run_migrations(db_path):
 - [x] **5.2** Account snapshots: daily balance recording
 - [x] **5.3** Trading dashboard: KPI cards (win rate, PF, expectancy, max DD)
 - [x] **5.4** Equity curve with TradingView Lightweight Charts
-- [ ] **5.5** P&L distribution histogram
+- [x] **5.5** P&L distribution histogram
 - [ ] **5.6** R-multiple histogram
 - [ ] **5.7** Win rate by strategy breakdown
 - [ ] **5.8** Discipline vs performance scatter chart
