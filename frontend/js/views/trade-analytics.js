@@ -25,6 +25,8 @@ let _histChart = null;
 let _rDistChart = null;
 // Win rate by strategy chart — Chart.js instance, destroyed before each reload
 let _strategyChart = null;
+// Discipline vs P&L scatter — Chart.js instance, destroyed before each reload
+let _disciplineChart = null;
 
 // ---- Render entry point ----
 
@@ -157,6 +159,7 @@ async function loadMetrics() {
             loadPnlDistribution(),
             loadRDistribution(),
             loadWinRateByStrategy(),
+            loadDisciplineScatter(),
         ]);
     }
 }
@@ -509,6 +512,110 @@ async function loadWinRateByStrategy() {
     });
 }
 
+// ---- Discipline vs P&L scatter chart ----
+
+async function loadDisciplineScatter() {
+    if (_disciplineChart) { _disciplineChart.destroy(); _disciplineChart = null; }
+
+    const container = document.getElementById('discipline-scatter-chart');
+    if (!container) return;
+
+    const params = new URLSearchParams();
+    if (state.accountId)  params.set('account_id',  state.accountId);
+    if (state.strategyId) params.set('strategy_id', state.strategyId);
+    if (state.assetClass) params.set('asset_class', state.assetClass);
+    if (state.startDate)  params.set('start_date',  state.startDate);
+    if (state.endDate)    params.set('end_date',     state.endDate);
+
+    const qs = params.toString();
+    let points;
+    try {
+        const data = await api.get('/api/reports/discipline-scatter' + (qs ? '?' + qs : ''));
+        points = data.points ?? [];
+    } catch (err) {
+        container.innerHTML = `<div class="error-state" style="min-height:0;padding:var(--space-3);">Unable to load discipline scatter: ${escHtml(err.message ?? 'Unknown error')}</div>`;
+        return;
+    }
+
+    if (points.length === 0) {
+        container.innerHTML = `<p class="text-muted" style="padding:var(--space-4);font-size:13px;">No discipline data for the selected filters. Record rules followed % on trades to enable this chart.</p>`;
+        return;
+    }
+
+    function _pointColor(pnl) {
+        if (pnl > 0) return '#10B981';
+        if (pnl < 0) return '#EF4444';
+        return '#F59E0B';
+    }
+
+    let canvas = container.querySelector('canvas');
+    if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.id = 'discipline-scatter-canvas';
+        container.innerHTML = '';
+        container.appendChild(canvas);
+    }
+
+    Chart.defaults.color = '#9CA3AF';
+    Chart.defaults.borderColor = '#2E3140';
+    Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+
+    _disciplineChart = new Chart(canvas.getContext('2d'), {
+        type: 'scatter',
+        data: {
+            datasets: [{
+                label: 'Trades',
+                data: points,
+                backgroundColor: points.map(p => _pointColor(p.y)),
+                borderColor:     points.map(p => _pointColor(p.y)),
+                borderWidth: 1,
+                pointRadius: 5,
+                pointHoverRadius: 7,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title(items) {
+                            const p = points[items[0].dataIndex];
+                            return `${escHtml(p.symbol ?? '—')} — ${p.exit_date}`;
+                        },
+                        label(item) {
+                            const p = points[item.dataIndex];
+                            const pnlStr = (p.y >= 0 ? '+' : '') + '£' + p.y.toFixed(2);
+                            const rStr = (p.r_multiple !== null && p.r_multiple !== undefined)
+                                ? `  ${p.r_multiple >= 0 ? '+' : ''}${p.r_multiple.toFixed(2)}R`
+                                : '';
+                            return [
+                                `Discipline: ${p.x.toFixed(0)}%`,
+                                `P&L: ${pnlStr}${rStr}`,
+                            ];
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    min: 0,
+                    max: 100,
+                    grid: { color: '#2E3140' },
+                    ticks: { callback: v => v + '%', font: { size: 11 } },
+                    title: { display: true, text: 'Rules Followed (%)', color: '#6B7280', font: { size: 11 } },
+                },
+                y: {
+                    grid: { color: '#2E3140' },
+                    ticks: { callback: v => '£' + v.toFixed(0), font: { size: 11 } },
+                    title: { display: true, text: 'Net P&L (£)', color: '#6B7280', font: { size: 11 } },
+                },
+            },
+        },
+    });
+}
+
 // ---- Dashboard HTML ----
 
 function renderDashboard(data) {
@@ -582,6 +689,14 @@ function renderDashboard(data) {
         <div class="card mb-4">
             <div class="card-title">Win Rate by Strategy</div>
             <div id="strategy-chart" style="position: relative; margin-top: var(--space-4);"></div>
+        </div>
+
+        <!-- Discipline vs P&L Scatter -->
+        <div class="card mb-4">
+            <div class="card-title">Discipline vs Performance</div>
+            <div id="discipline-scatter-chart" style="position: relative; height: 320px; margin-top: var(--space-4);">
+                <canvas id="discipline-scatter-canvas"></canvas>
+            </div>
         </div>
 
         <!-- Trade P&L breakdown -->

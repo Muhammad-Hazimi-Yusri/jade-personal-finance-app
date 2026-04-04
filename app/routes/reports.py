@@ -225,3 +225,43 @@ def win_rate_by_strategy_report():
         return jsonify({"error": str(exc)}), 422
 
     return jsonify(data), 200
+
+
+@bp.get("/discipline-scatter")
+def discipline_scatter_report():
+    """Per-trade discipline vs P&L scatter data for closed trades.
+
+    Only includes trades where both ``rules_followed_pct`` and ``pnl_net``
+    are set (i.e. discipline was recorded and the trade is closed).
+
+    Query params:
+        account_id (int): Filter by trading account.
+        strategy_id (int): Filter by strategy.
+        asset_class (str): Filter by asset class (e.g. stocks, forex, crypto).
+        start_date (str): ISO 8601 date — include trades with exit_date >= this.
+        end_date (str): ISO 8601 date — include trades with exit_date <= this.
+
+    Returns:
+        JSON with ``points`` list and ``total`` count.
+        Each point: {x, y, symbol, exit_date, r_multiple}.
+        ``x`` is rules_followed_pct (0–100), ``y`` is net P&L in decimal £.
+    """
+    account_id  = request.args.get("account_id",  None, type=int)
+    strategy_id = request.args.get("strategy_id", None, type=int)
+    asset_class = request.args.get("asset_class", None, type=str)
+    start_date  = request.args.get("start_date",  None, type=str)
+    end_date    = request.args.get("end_date",    None, type=str)
+
+    try:
+        data = metrics_service.get_discipline_scatter(
+            get_db(),
+            account_id=account_id,
+            strategy_id=strategy_id,
+            asset_class=asset_class,
+            start_date=start_date,
+            end_date=end_date,
+        )
+    except ValueError as exc:
+        return jsonify({"error": str(exc)}), 422
+
+    return jsonify(data), 200

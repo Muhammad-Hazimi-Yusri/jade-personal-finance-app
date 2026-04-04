@@ -970,3 +970,103 @@ def get_win_rate_by_strategy(
         })
 
     return {"strategies": strategies}
+
+
+def get_discipline_scatter(
+    db: sqlite3.Connection,
+    *,
+    account_id: Optional[int] = None,
+    strategy_id: Optional[int] = None,
+    asset_class: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+) -> dict:
+    """Per-trade discipline vs P&L scatter data for closed trades.
+
+    Returns one data point per closed trade that has both ``pnl_net`` and
+    ``rules_followed_pct`` set.  Monetary values are converted to decimal
+    pounds before returning.
+
+    Args:
+        db: Active SQLite connection.
+        account_id: Filter to a specific trading account.
+        strategy_id: Filter to a specific strategy.
+        asset_class: Filter to a specific asset class.
+        start_date: ISO 8601 lower bound on exit_date (inclusive).
+        end_date: ISO 8601 upper bound on exit_date (inclusive).
+
+    Returns:
+        Dict with a ``points`` key containing a list of dicts, each with
+        ``x`` (rules_followed_pct float 0–100), ``y`` (pnl_net decimal £),
+        ``symbol`` (str), ``exit_date`` (ISO 8601 str), and
+        ``r_multiple`` (float or None).
+        Also includes ``total`` (int) count of points returned.
+
+    Raises:
+        ValueError: If date strings are invalid or start_date > end_date.
+    """
+    if start_date is not None:
+        try:
+            date.fromisoformat(start_date)
+        except ValueError:
+            raise ValueError("start_date must be a valid ISO 8601 date (YYYY-MM-DD)")
+    if end_date is not None:
+        try:
+            date.fromisoformat(end_date)
+        except ValueError:
+            raise ValueError("end_date must be a valid ISO 8601 date (YYYY-MM-DD)")
+    if start_date is not None and end_date is not None:
+        if date.fromisoformat(start_date) > date.fromisoformat(end_date):
+            raise ValueError("start_date must be on or before end_date")
+
+    conditions = [
+        "is_open = 0",
+        "exit_date IS NOT NULL",
+        "pnl_net IS NOT NULL",
+        "rules_followed_pct IS NOT NULL",
+    ]
+    params: list = []
+
+    if account_id is not None:
+        conditions.append("account_id = ?")
+        params.append(account_id)
+    if strategy_id is not None:
+        conditions.append("strategy_id = ?")
+        params.append(strategy_id)
+    if asset_class is not None:
+        conditions.append("asset_class = ?")
+        params.append(asset_class)
+    if start_date is not None:
+        conditions.append("exit_date >= ?")
+        params.append(start_date)
+    if end_date is not None:
+        conditions.append("exit_date <= ?")
+        params.append(end_date)
+
+    where_clause = " AND ".join(conditions)
+    sql = f"""
+        SELECT
+            rules_followed_pct,
+            pnl_net,
+            symbol,
+            exit_date,
+            r_multiple
+        FROM trades
+        WHERE {where_clause}
+        ORDER BY exit_date ASC, id ASC
+    """  # noqa: S608 — where_clause built from literals only, no user data
+
+    rows = db.execute(sql, params).fetchall()
+
+    points = [
+        {
+            "x": row["rules_followed_pct"],
+            "y": _from_pence(row["pnl_net"]),
+            "symbol": row["symbol"],
+            "exit_date": row["exit_date"],
+            "r_multiple": row["r_multiple"],
+        }
+        for row in rows
+    ]
+
+    return {"points": points, "total": len(points)}
