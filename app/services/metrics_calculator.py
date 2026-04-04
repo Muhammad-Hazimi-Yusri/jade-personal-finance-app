@@ -45,6 +45,25 @@ def _format_bin_label(lo_pence: int, hi_pence: int) -> str:
     return f"{_fmt(lo_pence)} to {_fmt(hi_pence)}"
 
 
+_NICE_R_STEPS = [0.1, 0.25, 0.5, 1.0, 2.0, 5.0, 10.0]
+
+
+def _nice_r_step(raw: float) -> float:
+    """Round a raw bin width to a human-readable R-multiple step."""
+    for step in _NICE_R_STEPS:
+        if step >= raw:
+            return step
+    return raw
+
+
+def _format_r_label(lo: float, hi: float) -> str:
+    """Format a bin range as an R-multiple string, e.g. '-2.00R to -1.00R'."""
+    def _fmt(v: float) -> str:
+        sign = "-" if v < 0 else ""
+        return f"{sign}{abs(v):.2f}R"
+    return f"{_fmt(lo)} to {_fmt(hi)}"
+
+
 # ---------------------------------------------------------------------------
 # Pure metric functions
 # ---------------------------------------------------------------------------
@@ -422,6 +441,73 @@ def calculate_pnl_distribution(values: list[int]) -> dict:
     return {"bins": bins, "total": n}
 
 
+def calculate_r_distribution(values: list[float]) -> dict:
+    """Compute histogram bin data from a list of r_multiple float values.
+
+    Bins are auto-sized using Sturges' rule (capped at 20), then snapped to a
+    human-readable R step via ``_nice_r_step``.
+
+    Args:
+        values: Flat list of r_multiple floats for closed trades.
+
+    Returns:
+        Dict with ``bins`` (list of bin dicts) and ``total`` (int trade count).
+        Each bin dict contains: ``label``, ``min``, ``max``, ``count``,
+        ``midpoint`` — all as R-multiple floats.
+    """
+    n = len(values)
+    if n == 0:
+        return {"bins": [], "total": 0}
+
+    lo = min(values)
+    hi = max(values)
+
+    # Edge case: all trades have identical R — produce one bin
+    if lo == hi:
+        return {
+            "bins": [{
+                "label": _format_r_label(lo, lo),
+                "min": round(lo, 4),
+                "max": round(lo, 4),
+                "count": n,
+                "midpoint": round(lo, 4),
+            }],
+            "total": n,
+        }
+
+    # Sturges' rule, capped at 20 bins
+    k = min(math.ceil(math.log2(n)) + 1, 20)
+    raw_width = (hi - lo) / k
+    bin_width = _nice_r_step(raw_width)
+
+    # Grid-align the lower bound so bin edges land on round numbers
+    bin_lo = math.floor(lo / bin_width) * bin_width
+
+    bins: list[dict] = []
+    edge = bin_lo
+    while True:
+        bin_hi = edge + bin_width
+        if bin_hi >= hi:
+            count = sum(1 for v in values if edge <= v <= hi)
+        else:
+            count = sum(1 for v in values if edge <= v < bin_hi)
+        midpoint = round((edge + bin_hi) / 2, 4)
+        bins.append({
+            "label": _format_r_label(edge, bin_hi),
+            "min": round(edge, 4),
+            "max": round(bin_hi, 4),
+            "count": count,
+            "midpoint": midpoint,
+        })
+        edge = bin_hi
+        if edge >= hi:
+            break
+
+    bins = [b for b in bins if b["min"] <= round(hi, 4) and b["max"] >= round(lo, 4)]
+
+    return {"bins": bins, "total": n}
+
+
 # ---------------------------------------------------------------------------
 # DB-facing orchestrator
 # ---------------------------------------------------------------------------
@@ -709,3 +795,78 @@ def get_pnl_distribution(
 
     rows = db.execute(sql, params).fetchall()
     return calculate_pnl_distribution([row["pnl_net"] for row in rows])
+
+
+def get_r_distribution(
+    db: sqlite3.Connection,
+    *,
+    account_id: Optional[int] = None,
+    strategy_id: Optional[int] = None,
+    asset_class: Optional[str] = None,
+    start_date: Optional[str] = None,
+    end_date: Optional[str] = None,
+) -> dict:
+    """R-multiple distribution histogram bins from closed trades.
+
+    Fetches all r_multiple values for closed trades matching the filters, then
+    delegates to ``calculate_r_distribution`` for bin computation.
+
+    Args:
+        db: Active SQLite connection.
+        account_id: Filter to a specific trading account.
+        strategy_id: Filter to a specific strategy.
+        asset_class: Filter to a specific asset class.
+        start_date: ISO 8601 lower bound on exit_date (inclusive).
+        end_date: ISO 8601 upper bound on exit_date (inclusive).
+
+    Returns:
+        Dict with ``bins`` list and ``total`` int.  Each bin contains
+        ``label``, ``min``, ``max``, ``count``, and ``midpoint`` (R-multiple
+        floats).  Trades with no ``r_multiple`` set are excluded.
+
+    Raises:
+        ValueError: If date strings are invalid or start_date > end_date.
+    """
+    if start_date is not None:
+        try:
+            date.fromisoformat(start_date)
+        except ValueError:
+            raise ValueError("start_date must be a valid ISO 8601 date (YYYY-MM-DD)")
+    if end_date is not None:
+        try:
+            date.fromisoformat(end_date)
+        except ValueError:
+            raise ValueError("end_date must be a valid ISO 8601 date (YYYY-MM-DD)")
+    if start_date is not None and end_date is not None:
+        if date.fromisoformat(start_date) > date.fromisoformat(end_date):
+            raise ValueError("start_date must be on or before end_date")
+
+    conditions = ["is_open = 0", "exit_date IS NOT NULL", "r_multiple IS NOT NULL"]
+    params: list = []
+
+    if account_id is not None:
+        conditions.append("account_id = ?")
+        params.append(account_id)
+    if strategy_id is not None:
+        conditions.append("strategy_id = ?")
+        params.append(strategy_id)
+    if asset_class is not None:
+        conditions.append("asset_class = ?")
+        params.append(asset_class)
+    if start_date is not None:
+        conditions.append("exit_date >= ?")
+        params.append(start_date)
+    if end_date is not None:
+        conditions.append("exit_date <= ?")
+        params.append(end_date)
+
+    where_clause = " AND ".join(conditions)
+    sql = f"""
+        SELECT r_multiple
+        FROM trades
+        WHERE {where_clause}
+        ORDER BY r_multiple ASC
+    """  # noqa: S608 — where_clause built from literals only, no user data
+
+    rows = db.execute(sql, params).fetchall()
+    return calculate_r_distribution([row["r_multiple"] for row in rows])

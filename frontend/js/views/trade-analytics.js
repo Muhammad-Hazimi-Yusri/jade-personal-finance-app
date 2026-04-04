@@ -21,6 +21,8 @@ let _chart = null;
 let _resizeObserver = null;
 // P&L distribution histogram — Chart.js instance, destroyed before each reload
 let _histChart = null;
+// R-multiple distribution histogram — Chart.js instance, destroyed before each reload
+let _rDistChart = null;
 
 // ---- Render entry point ----
 
@@ -151,6 +153,7 @@ async function loadMetrics() {
         await Promise.all([
             loadEquityCurve(),
             loadPnlDistribution(),
+            loadRDistribution(),
         ]);
     }
 }
@@ -317,6 +320,95 @@ async function loadPnlDistribution() {
     });
 }
 
+async function loadRDistribution() {
+    if (_rDistChart) { _rDistChart.destroy(); _rDistChart = null; }
+
+    const container = document.getElementById('r-dist-chart');
+    if (!container) return;
+
+    const params = new URLSearchParams();
+    if (state.accountId)  params.set('account_id',  state.accountId);
+    if (state.strategyId) params.set('strategy_id', state.strategyId);
+    if (state.assetClass) params.set('asset_class', state.assetClass);
+    if (state.startDate)  params.set('start_date',  state.startDate);
+    if (state.endDate)    params.set('end_date',     state.endDate);
+
+    const qs = params.toString();
+    let bins;
+    try {
+        const data = await api.get('/api/reports/r-distribution' + (qs ? '?' + qs : ''));
+        bins = data.bins ?? [];
+    } catch (err) {
+        container.innerHTML = `<div class="error-state" style="min-height:0;padding:var(--space-3);">Unable to load R-multiple distribution: ${escHtml(err.message ?? 'Unknown error')}</div>`;
+        return;
+    }
+
+    if (bins.length === 0) {
+        container.innerHTML = `<p class="text-muted" style="padding:var(--space-4);font-size:13px;">No R-multiple data for the selected filters. Set a risk amount on trades to enable this chart.</p>`;
+        return;
+    }
+
+    function _binColor(midpoint) {
+        if (midpoint < 0) return '#EF4444';
+        if (midpoint > 0) return '#10B981';
+        return '#F59E0B';
+    }
+
+    let canvas = container.querySelector('canvas');
+    if (!canvas) {
+        canvas = document.createElement('canvas');
+        canvas.id = 'r-dist-canvas';
+        container.innerHTML = '';
+        container.appendChild(canvas);
+    }
+
+    Chart.defaults.color = '#9CA3AF';
+    Chart.defaults.borderColor = '#2E3140';
+    Chart.defaults.font.family = "'Inter', system-ui, sans-serif";
+
+    _rDistChart = new Chart(canvas.getContext('2d'), {
+        type: 'bar',
+        data: {
+            labels: bins.map(b => b.label),
+            datasets: [{
+                label: 'Trades',
+                data: bins.map(b => b.count),
+                backgroundColor: bins.map(b => _binColor(b.midpoint)),
+                borderColor:     bins.map(b => _binColor(b.midpoint)),
+                borderWidth: 1,
+                borderRadius: 3,
+            }],
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        title(items) { return items[0].label; },
+                        label(item) {
+                            const n = item.parsed.y;
+                            return `${n} trade${n === 1 ? '' : 's'}`;
+                        },
+                    },
+                },
+            },
+            scales: {
+                x: {
+                    grid: { display: false },
+                    ticks: { maxRotation: 45, font: { size: 11 } },
+                },
+                y: {
+                    grid: { color: '#2E3140' },
+                    ticks: { stepSize: 1, precision: 0 },
+                    beginAtZero: true,
+                },
+            },
+        },
+    });
+}
+
 // ---- Dashboard HTML ----
 
 function renderDashboard(data) {
@@ -375,6 +467,14 @@ function renderDashboard(data) {
             <div class="card-title">P&amp;L Distribution</div>
             <div id="pnl-dist-chart" style="position: relative; height: 260px; margin-top: var(--space-4);">
                 <canvas id="pnl-dist-canvas"></canvas>
+            </div>
+        </div>
+
+        <!-- R-Multiple Distribution histogram -->
+        <div class="card mb-4">
+            <div class="card-title">R-Multiple Distribution</div>
+            <div id="r-dist-chart" style="position: relative; height: 260px; margin-top: var(--space-4);">
+                <canvas id="r-dist-canvas"></canvas>
             </div>
         </div>
 
