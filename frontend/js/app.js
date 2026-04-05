@@ -94,9 +94,25 @@ function updateActiveNav(key) {
     });
 }
 
+/**
+ * Fetch /api/meta and reveal the demo banner if demo_mode is enabled.
+ */
+async function initDemoBanner() {
+    try {
+        const res = await fetch('/api/meta');
+        const data = await res.json();
+        if (data.demo_mode) {
+            document.getElementById('demo-banner').hidden = false;
+        }
+    } catch (_) {
+        // Non-fatal: banner stays hidden if fetch fails
+    }
+}
+
 // ---- Initialise ----
 window.addEventListener('hashchange', handleRoute);
 document.addEventListener('DOMContentLoaded', () => {
+    initDemoBanner();
     // Default to dashboard if no hash present
     if (!window.location.hash || window.location.hash === '#') {
         window.location.hash = '#/';

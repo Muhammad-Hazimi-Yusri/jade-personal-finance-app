@@ -15,6 +15,26 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.6.3] — 2026-04-05
+
+### Added
+
+#### Phase 6.3 — DEMO_MODE flag: banner display + response header
+
+- New **`GET /api/meta`** endpoint — returns `{"version": "...", "demo_mode": true/false}`.
+  Used by the frontend to detect demo mode without parsing response headers.
+- **Demo mode banner** — a full-width warning bar rendered above the app layout
+  when `DEMO_MODE=true`. Displays "Demo Mode — data resets daily. All changes
+  are discarded." Implemented via `initDemoBanner()` in `app.js`, which fetches
+  `/api/meta` once on startup and removes the `hidden` attribute if `demo_mode`
+  is enabled.
+- **`X-Demo-Mode: true`** response header already applied to all responses via
+  `after_request` hook (present since 0.6.2 scaffold); now surfaced to users via
+  the banner.
+- Documented `DEMO_MODE=false` in `.env.example`.
+
+---
+
 ## [0.5.7] — 2026-04-04
 
 ### Added

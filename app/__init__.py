@@ -6,7 +6,7 @@ Flask application factory.
 import os
 from pathlib import Path
 
-__version__ = "0.6.2"
+__version__ = "0.6.3"
 
 from flask import Flask, jsonify, send_from_directory
 
@@ -92,6 +92,14 @@ def create_app(test_config: dict | None = None) -> Flask:
     def health():
         """Docker / load-balancer health check endpoint."""
         return jsonify({"status": "ok"})
+
+    @app.route("/api/meta")
+    def meta():
+        """Return app metadata for frontend configuration."""
+        return jsonify({
+            "version": __version__,
+            "demo_mode": app.config["DEMO_MODE"],
+        })
 
     @app.route("/")
     def index():

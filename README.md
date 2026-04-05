@@ -1505,7 +1505,7 @@ def run_migrations(db_path):
 
 - [x] **6.1** Dockerfile and docker-compose.yml (production + demo containers)
 - [x] **6.2** Flask static file serving (frontend served by Flask, no separate web server)
-- [ ] **6.3** `DEMO_MODE` flag: banner display + response header
+- [x] **6.3** `DEMO_MODE` flag: banner display + response header
 - [ ] **6.4** Demo seed data script (`demo-data/seed.sql`) with ~500 transactions, ~85 trades, journals
 - [ ] **6.5** Build `seed.db` from seed script, configure daily reset container
 - [ ] **6.6** Cloudflare Tunnel public hostname config (production + demo)

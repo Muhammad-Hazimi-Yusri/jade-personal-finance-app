@@ -1466,6 +1466,20 @@ details summary:hover {
   }
 }
 
+/* ---- Demo Mode Banner (Phase 6.3) ---- */
+
+.demo-banner {
+  width: 100%;
+  padding: var(--space-2) var(--space-4);
+  background: rgba(245, 158, 11, 0.10);
+  border-bottom: 1px solid rgba(245, 158, 11, 0.30);
+  color: var(--color-warning);
+  text-align: center;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.01em;
+}
+
 @media (max-width: 600px) {
   .kpi-grid,
   .report-kpi-grid {
