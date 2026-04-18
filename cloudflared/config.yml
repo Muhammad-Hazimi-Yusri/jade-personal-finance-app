@@ -10,6 +10,11 @@
 #   cloudflared tunnel ingress validate ~/.cloudflared/config.yml
 #   cloudflared tunnel ingress rule https://jade.muhammadhazimiyusri.uk
 #   cloudflared tunnel ingress rule https://jade-demo.muhammadhazimiyusri.uk
+#
+# The production hostname (`jade.`) is additionally gated by Cloudflare Access.
+# See `cloudflared/access.yml` for the Access application + policy reference.
+# The demo hostname (`jade-demo.`) is intentionally public — do NOT attach an
+# Access policy to it.
 
 ingress:
   - hostname: jade.muhammadhazimiyusri.uk

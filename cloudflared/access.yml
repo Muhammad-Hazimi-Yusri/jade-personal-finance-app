@@ -1,0 +1,91 @@
+# Reference Cloudflare Access configuration for Jade.
+#
+# This file is documentation — it is NOT consumed by `cloudflared` at runtime.
+# Cloudflare Access applications and policies live in the Cloudflare Zero
+# Trust dashboard (or are provisioned via Terraform / the Cloudflare API).
+# This YAML captures the intended shape of that configuration so the repo
+# remains the single source of truth for deployment topology.
+#
+# Scope (matches `cloudflared/config.yml`):
+#   - jade.muhammadhazimiyusri.uk       → protected by Cloudflare Access
+#   - jade-demo.muhammadhazimiyusri.uk  → intentionally public (no Access)
+#
+# To apply via the dashboard, follow the step-by-step runbook further down.
+# To apply via the Cloudflare API, translate the `applications:` block
+# below into the payload accepted by:
+#   POST https://api.cloudflare.com/client/v4/accounts/{account_id}/access/apps
+#
+# After any change, verify from an incognito window that:
+#   - https://jade.muhammadhazimiyusri.uk shows the Cloudflare login page
+#   - After logging in with an allowed email, the Jade UI loads
+#   - https://jade-demo.muhammadhazimiyusri.uk loads directly without login
+
+# ---------------------------------------------------------------------------
+# Access applications
+# ---------------------------------------------------------------------------
+
+applications:
+  # === Production — owner-only, email-gated ===
+  - name: Jade (Production)
+    domain: jade.muhammadhazimiyusri.uk
+    type: self_hosted
+    session_duration: 24h
+    auto_redirect_to_identity: false
+    app_launcher_visible: true
+    # Allow any configured identity provider on the account (email OTP is
+    # enabled by default in Cloudflare Zero Trust). Leave empty for "all IdPs".
+    allowed_idps: []
+    # CORS is not needed — Jade is strictly same-origin.
+    cors_headers: {}
+    policies:
+      - name: Allow owner
+        decision: allow
+        precedence: 1
+        # Replace the placeholder with the real owner email before applying.
+        # Additional trusted emails can be added to the same `emails` list.
+        include:
+          - emails:
+              - owner@example.com
+        # No `require` or `exclude` rules — a single-user app keeps it simple.
+        require: []
+        exclude: []
+
+# ---------------------------------------------------------------------------
+# Public hostnames (explicitly NOT behind Access)
+# ---------------------------------------------------------------------------
+#
+# The demo hostname must remain reachable without authentication. Do not
+# create an Access application for it in the dashboard. If an application
+# is created for `*.muhammadhazimiyusri.uk` at some point, add a bypass
+# policy scoped to `jade-demo.muhammadhazimiyusri.uk` with:
+#   decision: bypass
+#   include: [{ everyone: {} }]
+
+public_hostnames:
+  - hostname: jade-demo.muhammadhazimiyusri.uk
+    reason: Public portfolio demo — resets daily, contains only fake data.
+
+# ---------------------------------------------------------------------------
+# Dashboard runbook (manual setup)
+# ---------------------------------------------------------------------------
+#
+# 1. Cloudflare dashboard → Zero Trust → Access → Applications → Add an
+#    application → Self-hosted.
+# 2. Application configuration:
+#      - Application name:    Jade (Production)
+#      - Session Duration:    24 hours
+#      - Application domain:  jade.muhammadhazimiyusri.uk
+#      - Identity providers:  (leave default / One-time PIN enabled)
+# 3. Add a policy:
+#      - Policy name:  Allow owner
+#      - Action:       Allow
+#      - Session:      24 hours (inherit)
+#      - Include rule: Emails → <owner email(s)>
+# 4. Save. No Gateway / WARP / device posture requirements.
+# 5. Do NOT create an Access application for
+#    `jade-demo.muhammadhazimiyusri.uk`. Verify with an incognito window
+#    that the demo loads without prompting for login.
+#
+# Policy changes propagate within seconds; existing sessions keep their
+# 24-hour tokens until expiry (force a re-login via Zero Trust → My Team
+# → Users → Revoke if needed).

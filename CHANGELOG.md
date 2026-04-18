@@ -15,6 +15,33 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.6.7] — 2026-04-18
+
+### Added
+
+#### Phase 6.7 — Cloudflare Access policy setup for production (demo is public)
+
+- New **`cloudflared/access.yml`** — reference doc capturing the production
+  Cloudflare Access application (`jade.muhammadhazimiyusri.uk`) and its
+  `Allow owner` email policy (24h session, self-hosted, no IdP lock-in).
+  Pairs with the existing `cloudflared/config.yml` ingress reference so the
+  repo remains the single source of truth for deployment topology. Includes
+  a dashboard runbook and an explicit `public_hostnames:` section noting
+  that `jade-demo.muhammadhazimiyusri.uk` must NOT be placed behind Access.
+- **`cloudflared/config.yml`** — added a cross-reference comment pointing at
+  `access.yml` and reiterating that the demo hostname stays public.
+- **README Cloudflare Access Setup** — links to the committed reference,
+  adds the application name and session-duration fields that the dashboard
+  expects, and calls out the "do not protect the demo" rule as an explicit
+  step with an incognito-window verification tip.
+
+### Fixed
+
+- `__version__` in `app/__init__.py` and the `VERSION` file bumped to
+  `0.6.7` alongside this task.
+
+---
+
 ## [0.6.5] — 2026-04-18
 
 ### Added
