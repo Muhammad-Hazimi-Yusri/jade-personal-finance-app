@@ -147,7 +147,8 @@ jade/
 ├── ✅ litestream.yml            # Database backup config (Phase 6)
 ├── ✅ wsgi.py                   # Gunicorn WSGI entry point (Phase 6)
 ├── ✅ cloudflared/              # Reference Cloudflare Tunnel config (Phase 6)
-│   └── ✅ config.yml            # Ingress rules for prod + demo hostnames
+│   ├── ✅ config.yml            # Ingress rules for prod + demo hostnames
+│   └── ✅ access.yml            # Access application + policy reference (Phase 6.7)
 ├── ✅ requirements.txt          # Python dependencies (Phase 1)
 │
 ├── ✅ app/                      # Flask application (Phase 1)
@@ -850,9 +851,16 @@ User visits jade.muhammadhazimiyusri.uk
 
 ### Cloudflare Access Setup
 
+The canonical Access application + policy for production lives in
+[`cloudflared/access.yml`](cloudflared/access.yml) — a reference doc the repo
+keeps in sync with the dashboard configuration. The steps below mirror that
+file.
+
 1. **In Cloudflare Zero Trust Dashboard → Access → Applications:**
    - Create a new **Self-hosted** application
+   - Application name: `Jade (Production)`
    - Application domain: `jade.muhammadhazimiyusri.uk`
+   - Session duration: `24 hours`
    - Set a policy:
      - Policy name: `Allow owner`
      - Action: **Allow**
@@ -864,6 +872,12 @@ User visits jade.muhammadhazimiyusri.uk
      - Subdomain: `jade`
      - Domain: `muhammadhazimiyusri.uk`
      - Service: `http://localhost:8000`
+
+3. **Do NOT** create an Access application for
+   `jade-demo.muhammadhazimiyusri.uk` — the demo is intentionally public.
+   Verify from an incognito window that the demo loads without a login
+   prompt while `jade.muhammadhazimiyusri.uk` redirects to the Cloudflare
+   login page.
 
 ### Cloudflare Headers
 
@@ -1574,7 +1588,7 @@ def run_migrations(db_path):
 - [x] **6.4** Demo seed data script (`demo-data/seed.sql`) with ~500 transactions, ~85 trades, journals
 - [x] **6.5** Build `seed.db` from seed script, configure daily reset container
 - [x] **6.6** Cloudflare Tunnel public hostname config (production + demo)
-- [ ] **6.7** Cloudflare Access policy setup for production (demo is public)
+- [x] **6.7** Cloudflare Access policy setup for production (demo is public)
 - [ ] **6.8** Litestream backup configuration (production only)
 - [ ] **6.9** Settings page (manage accounts, strategies, categories, data export)
 - [ ] **6.10** Toast notifications for actions
