@@ -20,6 +20,14 @@
   Demo Mode — data resets daily. All changes are discarded.
 </div>
 
+<!-- Mobile: hamburger (shown < 900px via CSS), toggles .sidebar--open -->
+<button id="sidebar-toggle" class="sidebar-toggle" type="button" aria-label="Toggle navigation" aria-expanded="false">
+  <span aria-hidden="true">☰</span>
+</button>
+
+<!-- Mobile: tap-outside overlay that closes the sidebar drawer -->
+<div id="sidebar-backdrop" class="sidebar-backdrop" hidden></div>
+
 <div class="app-layout">
 
   <!-- Sidebar navigation -->

@@ -432,6 +432,105 @@ tbody tr:last-child td {
   color: var(--color-text-muted);
   font-size: 14px;
   gap: var(--space-3);
+  text-align: center;
+  padding: var(--space-4);
+}
+
+/* ---- Spinner (CSS-only rotating ring) ---- */
+.spinner {
+  display: inline-block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid rgba(255, 255, 255, 0.15);
+  border-top-color: var(--color-accent, #10b981);
+  border-radius: 50%;
+  animation: spinner-rotate 0.8s linear infinite;
+}
+
+.spinner--lg {
+  width: 32px;
+  height: 32px;
+  border-width: 3px;
+}
+
+@keyframes spinner-rotate {
+  to { transform: rotate(360deg); }
+}
+
+/* ---- Skeleton loader (shimmer block used before data renders) ---- */
+.skeleton {
+  display: block;
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.04) 0%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.04) 100%
+  );
+  background-size: 200% 100%;
+  border-radius: var(--radius-sm, 4px);
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+  height: 1em;
+}
+
+@keyframes skeleton-shimmer {
+  0%   { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+/* ---- Toast notifications ---- */
+.toast-container {
+  position: fixed;
+  top: var(--space-4);
+  right: var(--space-4);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  z-index: 9999;
+  pointer-events: none;   /* container ignores clicks; toasts opt in */
+  max-width: min(360px, calc(100vw - 2 * var(--space-4)));
+}
+
+.toast {
+  pointer-events: auto;
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius-md);
+  font-size: 14px;
+  line-height: 1.4;
+  color: var(--color-text, #f8fafc);
+  background: var(--color-bg-elevated, #1f2937);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+  opacity: 0;
+  transform: translateX(20px);
+  transition: opacity 180ms ease, transform 180ms ease;
+  word-wrap: break-word;
+}
+
+.toast--visible {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.toast--leaving {
+  opacity: 0;
+  transform: translateX(20px);
+}
+
+.toast--success {
+  border-left: 3px solid #10b981;
+}
+
+.toast--error {
+  border-left: 3px solid #ef4444;
+}
+
+.toast--warning {
+  border-left: 3px solid #f59e0b;
+}
+
+.toast--info {
+  border-left: 3px solid #3b82f6;
 }
 
 /* ---- Form validation ---- */
@@ -497,6 +596,19 @@ details summary:hover {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: var(--space-4);
+}
+
+/* Used in Settings → Data Export: download buttons laid out in a row that
+   wraps gracefully on narrow screens. */
+.export-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.export-grid .btn {
+  min-width: 200px;
+  justify-content: center;
 }
 
 /* ---- Flex helpers ---- */
@@ -1450,6 +1562,38 @@ details summary:hover {
   font-size: 16px;
 }
 
+/* ---- Mobile sidebar toggle + backdrop (hidden on desktop) ---- */
+.sidebar-toggle {
+  display: none;
+  position: fixed;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: 60;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.sidebar-toggle:hover {
+  background: var(--color-surface-light);
+}
+
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.5);
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
   .kpi-grid {
@@ -1462,6 +1606,50 @@ details summary:hover {
     grid-template-columns: repeat(2, 1fr);
   }
   .journal-layout {
+    grid-template-columns: 1fr;
+  }
+
+  /* Sidebar becomes a slide-in drawer. */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 220ms ease;
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.4);
+  }
+
+  .sidebar.sidebar--open {
+    transform: translateX(0);
+  }
+
+  .sidebar-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sidebar-backdrop:not([hidden]) {
+    display: block;
+  }
+
+  /* Give the floating hamburger room so it doesn't cover content. */
+  .main-content {
+    padding: calc(var(--space-6) + 48px) var(--space-4) var(--space-5);
+  }
+
+  /* Let wide tables scroll instead of forcing the page to overflow. */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Stack two-column grids into single column on narrow screens. */
+  .grid-2,
+  .grid-3,
+  .grid-4 {
     grid-template-columns: 1fr;
   }
 }
@@ -1481,10 +1669,20 @@ details summary:hover {
 }
 
 @media (max-width: 600px) {
+  /* Sidebar drawer sizing on very narrow screens. */
+  .sidebar {
+    width: min(280px, 100vw);
+    min-width: 0;
+  }
+
+  .page-header h1 { font-size: 18px; }
+  .card { padding: var(--space-4); }
+
   .kpi-grid,
   .report-kpi-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+
   .tab-btn {
     padding: var(--space-2) var(--space-3);
     font-size: 12px;

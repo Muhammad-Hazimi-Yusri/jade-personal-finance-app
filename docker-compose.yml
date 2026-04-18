@@ -79,17 +79,27 @@ services:
     depends_on:
       - jade-demo
 
-  # === BACKUP ===
+  # === BACKUP (opt-in) ===
+  # Continuous SQLite replication to any S3-compatible bucket (R2, B2, AWS S3).
+  # Only runs when explicitly enabled:
+  #   docker compose --profile backup up -d
+  # Requires LITESTREAM_* values in .env (see .env.example).
   litestream:
-    image: litestream/litestream:latest
+    image: litestream/litestream:0.3
     container_name: jade-litestream
     restart: unless-stopped
+    profiles:
+      - backup
     volumes:
       - ./data:/app/data
-      - ./litestream.yml:/etc/litestream.yml
+      - ./litestream.yml:/etc/litestream.yml:ro
     environment:
       - LITESTREAM_ACCESS_KEY_ID=${S3_ACCESS_KEY}
       - LITESTREAM_SECRET_ACCESS_KEY=${S3_SECRET_KEY}
+      - LITESTREAM_BUCKET=${LITESTREAM_BUCKET}
+      - LITESTREAM_ENDPOINT=${LITESTREAM_ENDPOINT}
+      - LITESTREAM_PATH=${LITESTREAM_PATH:-db}
+      - LITESTREAM_REGION=${LITESTREAM_REGION:-auto}
     command: replicate
     depends_on:
       - jade-app

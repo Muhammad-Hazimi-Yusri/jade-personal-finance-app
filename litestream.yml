@@ -1,7 +1,15 @@
+# Litestream configuration for continuous SQLite replication.
+#
+# Values with ${...} are substituted from environment variables. The
+# litestream service in docker-compose.yml (profile: backup) passes them
+# through from .env — see .env.example for the full list.
+#
+# Defaults mirror a Cloudflare R2 setup but any S3-compatible endpoint works.
 dbs:
   - path: /app/data/jade.db
     replicas:
       - type: s3
-        bucket: jade-backups
-        path: db
-        endpoint: https://YOUR_R2_ENDPOINT_HERE
+        bucket: ${LITESTREAM_BUCKET}
+        path: ${LITESTREAM_PATH}
+        endpoint: ${LITESTREAM_ENDPOINT}
+        region: ${LITESTREAM_REGION}

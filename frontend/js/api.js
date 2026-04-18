@@ -2,13 +2,27 @@
  * api.js — Fetch wrapper for all Jade API calls.
  *
  * All methods parse JSON and throw on non-2xx responses, including
- * the error message from the API body when available.
+ * the error message from the API body when available. Network-level
+ * failures (e.g. offline, CORS, DNS) surface a single global toast so
+ * users get immediate feedback regardless of which view triggered the call.
  *
  * Usage:
  *   import { api } from './api.js';
  *   const data = await api.get('/api/transactions');
  *   await api.post('/api/transactions', { name: 'Coffee', amount: -3.50, ... });
  */
+
+import { showToast } from './toast.js';
+
+// Debounce identical network-error toasts so a burst of failed calls after
+// losing connectivity doesn't stack ten "Network error" notifications.
+let _lastNetworkToastAt = 0;
+function _toastNetworkError() {
+    const now = Date.now();
+    if (now - _lastNetworkToastAt < 2000) return;
+    _lastNetworkToastAt = now;
+    showToast('Network error — check your connection', 'error', 5000);
+}
 
 /**
  * Core fetch helper.
@@ -17,13 +31,21 @@
  * @returns {Promise<any>} Parsed JSON response body
  */
 async function request(path, options = {}) {
-    const res = await fetch(path, {
-        ...options,
-        headers: {
-            'Content-Type': 'application/json',
-            ...options.headers,
-        },
-    });
+    let res;
+    try {
+        res = await fetch(path, {
+            ...options,
+            headers: {
+                'Content-Type': 'application/json',
+                ...options.headers,
+            },
+        });
+    } catch (err) {
+        // `fetch` only rejects on network-level failures. Surface a toast
+        // then re-throw so callers that want to update their own UI still can.
+        _toastNetworkError();
+        throw new Error('Network error — check your connection');
+    }
 
     // Try to extract a JSON error body for richer error messages
     let body;
@@ -94,7 +116,13 @@ export const api = {
         const form = new FormData();
         form.append('file', file);
 
-        const res = await fetch(path, { method: 'POST', body: form });
+        let res;
+        try {
+            res = await fetch(path, { method: 'POST', body: form });
+        } catch (err) {
+            _toastNetworkError();
+            throw new Error('Network error — check your connection');
+        }
 
         let body;
         try {
