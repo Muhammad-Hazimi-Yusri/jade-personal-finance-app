@@ -499,6 +499,19 @@ details summary:hover {
   gap: var(--space-4);
 }
 
+/* Used in Settings → Data Export: download buttons laid out in a row that
+   wraps gracefully on narrow screens. */
+.export-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-3);
+}
+
+.export-grid .btn {
+  min-width: 200px;
+  justify-content: center;
+}
+
 /* ---- Flex helpers ---- */
 .flex         { display: flex; }
 .flex-col     { display: flex; flex-direction: column; }

@@ -382,6 +382,25 @@ export async function render(container) {
                 </table>
             </div>
         </div>
+
+        <!-- Data Export -->
+        <div class="card mt-5">
+            <h2 class="card-title">Data Export</h2>
+            <p class="text-secondary mb-4" style="margin-top:-8px">
+                Download your data for backup or portability. All monetary values are exported as decimal GBP.
+            </p>
+            <div class="export-grid">
+                <a href="/api/export/transactions.csv" class="btn btn-ghost" download>
+                    ⬇ Transactions (CSV)
+                </a>
+                <a href="/api/export/trades.csv" class="btn btn-ghost" download>
+                    ⬇ Trades (CSV)
+                </a>
+                <a href="/api/export/all.json" class="btn btn-ghost" download>
+                    ⬇ Full backup (JSON)
+                </a>
+            </div>
+        </div>
     `;
 
     attachListeners(container);

@@ -88,6 +88,9 @@ def create_app(test_config: dict | None = None) -> Flask:
     from .routes.snapshots import bp as snapshots_bp
     app.register_blueprint(snapshots_bp)
 
+    from .routes.export import bp as export_bp
+    app.register_blueprint(export_bp)
+
     # --- Serve frontend ---
     frontend_dir = Path(__file__).parent.parent / "frontend"
 
