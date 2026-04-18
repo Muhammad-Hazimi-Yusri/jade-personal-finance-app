@@ -6,6 +6,8 @@
  * render(container) function.
  */
 
+import { showToast } from './toast.js';
+
 // Route map: hash fragment → lazy view loader
 const routes = {
     '':                  () => import('./views/dashboard.js'),
@@ -76,6 +78,7 @@ async function handleRoute() {
                 <strong>Something went wrong</strong>
                 <p class="mt-2">${err.message}</p>
             </div>`;
+        showToast(`Failed to load view: ${err.message}`, 'error');
     }
 
     updateActiveNav(key);
@@ -109,10 +112,53 @@ async function initDemoBanner() {
     }
 }
 
+/**
+ * Mobile sidebar drawer. On screens ≤ 900px the sidebar is hidden off-screen;
+ * the hamburger toggles a `.sidebar--open` class, and the backdrop dismisses.
+ * We also auto-close on route change so navigating from a nav link hides it.
+ */
+function initSidebarDrawer() {
+    const sidebar = document.getElementById('sidebar');
+    const toggle = document.getElementById('sidebar-toggle');
+    const backdrop = document.getElementById('sidebar-backdrop');
+    if (!sidebar || !toggle || !backdrop) return;
+
+    const open = () => {
+        sidebar.classList.add('sidebar--open');
+        backdrop.hidden = false;
+        toggle.setAttribute('aria-expanded', 'true');
+    };
+    const close = () => {
+        sidebar.classList.remove('sidebar--open');
+        backdrop.hidden = true;
+        toggle.setAttribute('aria-expanded', 'false');
+    };
+    const isOpen = () => sidebar.classList.contains('sidebar--open');
+
+    toggle.addEventListener('click', () => (isOpen() ? close() : open()));
+    backdrop.addEventListener('click', close);
+
+    // Close when a nav link is clicked (drawer shouldn't linger over content).
+    sidebar.addEventListener('click', (e) => {
+        const link = e.target.closest('.nav-link');
+        if (link) close();
+    });
+
+    // Close on hash change so programmatic navigation (e.g. after save)
+    // also dismisses the drawer.
+    window.addEventListener('hashchange', close);
+
+    // Close on Escape for keyboard users.
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && isOpen()) close();
+    });
+}
+
 // ---- Initialise ----
 window.addEventListener('hashchange', handleRoute);
 document.addEventListener('DOMContentLoaded', () => {
     initDemoBanner();
+    initSidebarDrawer();
     // Default to dashboard if no hash present
     if (!window.location.hash || window.location.hash === '#') {
         window.location.hash = '#/';

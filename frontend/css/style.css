@@ -1562,6 +1562,38 @@ details summary:hover {
   font-size: 16px;
 }
 
+/* ---- Mobile sidebar toggle + backdrop (hidden on desktop) ---- */
+.sidebar-toggle {
+  display: none;
+  position: fixed;
+  top: var(--space-3);
+  left: var(--space-3);
+  z-index: 60;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  border-radius: var(--radius-md);
+  background: var(--color-surface);
+  color: var(--color-text);
+  border: 1px solid var(--color-border);
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+}
+
+.sidebar-toggle:hover {
+  background: var(--color-surface-light);
+}
+
+.sidebar-backdrop {
+  display: none;
+  position: fixed;
+  inset: 0;
+  z-index: 40;
+  background: rgba(0, 0, 0, 0.5);
+}
+
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
   .kpi-grid {
@@ -1574,6 +1606,50 @@ details summary:hover {
     grid-template-columns: repeat(2, 1fr);
   }
   .journal-layout {
+    grid-template-columns: 1fr;
+  }
+
+  /* Sidebar becomes a slide-in drawer. */
+  .sidebar {
+    position: fixed;
+    top: 0;
+    left: 0;
+    height: 100vh;
+    z-index: 50;
+    transform: translateX(-100%);
+    transition: transform 220ms ease;
+    box-shadow: 4px 0 16px rgba(0, 0, 0, 0.4);
+  }
+
+  .sidebar.sidebar--open {
+    transform: translateX(0);
+  }
+
+  .sidebar-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .sidebar-backdrop:not([hidden]) {
+    display: block;
+  }
+
+  /* Give the floating hamburger room so it doesn't cover content. */
+  .main-content {
+    padding: calc(var(--space-6) + 48px) var(--space-4) var(--space-5);
+  }
+
+  /* Let wide tables scroll instead of forcing the page to overflow. */
+  .table-container {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Stack two-column grids into single column on narrow screens. */
+  .grid-2,
+  .grid-3,
+  .grid-4 {
     grid-template-columns: 1fr;
   }
 }
@@ -1593,10 +1669,20 @@ details summary:hover {
 }
 
 @media (max-width: 600px) {
+  /* Sidebar drawer sizing on very narrow screens. */
+  .sidebar {
+    width: min(280px, 100vw);
+    min-width: 0;
+  }
+
+  .page-header h1 { font-size: 18px; }
+  .card { padding: var(--space-4); }
+
   .kpi-grid,
   .report-kpi-grid {
     grid-template-columns: repeat(2, 1fr);
   }
+
   .tab-btn {
     padding: var(--space-2) var(--space-3);
     font-size: 12px;
