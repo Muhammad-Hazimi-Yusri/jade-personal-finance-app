@@ -8,7 +8,10 @@ from pathlib import Path
 
 __version__ = "0.6.7"
 
-from flask import Flask, jsonify, send_from_directory
+import logging
+
+from flask import Flask, jsonify, request, send_from_directory
+from werkzeug.exceptions import HTTPException
 
 from .db import close_db, init_db
 
@@ -123,6 +126,54 @@ def create_app(test_config: dict | None = None) -> Flask:
         else:
             response.headers["Cache-Control"] = "public, max-age=3600"
         return response
+
+    # --- Demo-mode write protection ---
+    # When DEMO_MODE is enabled, reject any mutating HTTP method so visitors
+    # cannot persist changes to the shared database. GET/HEAD/OPTIONS pass
+    # through unchanged. The daily reset container also guarantees a clean
+    # snapshot, but this middleware is defence-in-depth.
+    _WRITE_METHODS = {"POST", "PUT", "PATCH", "DELETE"}
+
+    @app.before_request
+    def block_writes_in_demo_mode():
+        if app.config["DEMO_MODE"] and request.method in _WRITE_METHODS:
+            return jsonify({"error": "Demo mode — changes are disabled"}), 403
+        return None
+
+    # --- Global error handlers ---
+    # All handlers return JSON in the shape `{"error": "<message>"}` to match
+    # the format already used by route-level handlers in app/routes/*.py.
+    # This prevents the default HTML error pages from leaking into JSON
+    # clients and gives the frontend a single shape to parse.
+    @app.errorhandler(404)
+    def handle_not_found(_err):
+        if request.path.startswith("/api/"):
+            return jsonify({"error": "Not found"}), 404
+        # For non-API routes fall back to the SPA shell so client-side
+        # routing can render a 404 view if it wants to.
+        response = send_from_directory(frontend_dir, "index.html")
+        response.headers["Cache-Control"] = "no-cache, must-revalidate"
+        return response, 200
+
+    @app.errorhandler(405)
+    def handle_method_not_allowed(_err):
+        return jsonify({"error": "Method not allowed"}), 405
+
+    @app.errorhandler(413)
+    def handle_payload_too_large(_err):
+        return jsonify({"error": "Payload too large (max 10MB)"}), 413
+
+    @app.errorhandler(HTTPException)
+    def handle_http_exception(err: HTTPException):
+        return jsonify({"error": err.description or err.name}), err.code or 500
+
+    @app.errorhandler(Exception)
+    def handle_unexpected_exception(err: Exception):
+        app.logger.exception("Unhandled exception: %s", err)
+        return jsonify({"error": "Internal server error"}), 500
+
+    if not app.debug:
+        logging.basicConfig(level=logging.INFO)
 
     # --- Security headers ---
     @app.after_request
