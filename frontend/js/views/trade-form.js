@@ -7,6 +7,7 @@
 
 import { api } from '../api.js';
 import { escHtml } from '../utils.js';
+import { showToast } from '../toast.js';
 
 // ---------------------------------------------------------------------------
 // Module-level state
@@ -759,11 +760,13 @@ async function handleSubmit(e) {
         }
 
         await syncTags(tradeId);
+        showToast(formState.mode === 'edit' ? 'Trade updated' : 'Trade saved', 'success');
         window.location.hash = '#/trades';
 
     } catch (err) {
         errorEl.innerHTML = `<strong>Save failed</strong><p class="mt-2">${escHtml(err.message)}</p>`;
         errorEl.style.display = '';
+        showToast(`Could not save trade: ${err.message}`, 'error');
         btn.disabled = false;
         btn.textContent = formState.mode === 'edit' ? 'Save Changes' : 'Save Trade';
         formState.saving = false;
@@ -783,11 +786,13 @@ async function handleDelete() {
 
     try {
         await api.del(`/api/trades/${formState.id}`);
+        showToast('Trade deleted', 'success');
         window.location.hash = '#/trades';
     } catch (err) {
         const errorEl = document.getElementById('form-error');
         errorEl.innerHTML = `<strong>Delete failed</strong><p class="mt-2">${escHtml(err.message)}</p>`;
         errorEl.style.display = '';
+        showToast(`Could not delete trade: ${err.message}`, 'error');
         btn.disabled = false;
         btn.textContent = 'Delete Trade';
     }

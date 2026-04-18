@@ -10,6 +10,7 @@
 
 import { api } from '../api.js';
 import { escHtml, formatCurrency } from '../utils.js';
+import { showToast } from '../toast.js';
 
 // ---------------------------------------------------------------------------
 // Module state
@@ -607,14 +608,17 @@ async function saveCategory() {
         const body = { label, colour, icon };
         if (formMode === 'add') {
             await api.post('/api/categories/', body);
+            showToast('Category created', 'success');
         } else {
             await api.put(`/api/categories/${editId}`, body);
+            showToast('Category updated', 'success');
         }
         hideForm();
         await loadCategories();
     } catch (err) {
         errorDiv.textContent = err.message;
         errorDiv.style.display = '';
+        showToast(`Could not save category: ${err.message}`, 'error');
     } finally {
         saveBtn.disabled = false;
         saveBtn.textContent = 'Save';
@@ -630,10 +634,12 @@ async function deleteCategory(id) {
     try {
         await api.del(`/api/categories/${id}`);
         await loadCategories();
+        showToast('Category deleted', 'success');
     } catch (err) {
         const errorDiv = document.getElementById('cat-error');
         errorDiv.textContent = err.message;
         errorDiv.style.display = '';
+        showToast(`Could not delete category: ${err.message}`, 'error');
     }
 }
 
@@ -710,14 +716,17 @@ async function saveRule() {
         const body = { field, operator, value, category, priority };
         if (ruleFormMode === 'add') {
             await api.post('/api/category-rules/', body);
+            showToast('Rule created', 'success');
         } else {
             await api.put(`/api/category-rules/${ruleEditId}`, body);
+            showToast('Rule updated', 'success');
         }
         hideRuleForm();
         await loadRules();
     } catch (err) {
         errorDiv.textContent = err.message;
         errorDiv.style.display = '';
+        showToast(`Could not save rule: ${err.message}`, 'error');
     } finally {
         saveBtn.disabled = false;
         saveBtn.textContent = 'Save';
@@ -733,10 +742,12 @@ async function deleteRule(id) {
     try {
         await api.del(`/api/category-rules/${id}`);
         await loadRules();
+        showToast('Rule deleted', 'success');
     } catch (err) {
         const errorDiv = document.getElementById('rule-error');
         errorDiv.textContent = err.message;
         errorDiv.style.display = '';
+        showToast(`Could not delete rule: ${err.message}`, 'error');
     }
 }
 
@@ -910,14 +921,17 @@ async function saveAccount() {
         };
         if (acctFormMode === 'add') {
             await api.post('/api/accounts/', body);
+            showToast('Account created', 'success');
         } else {
             await api.put(`/api/accounts/${acctEditId}`, body);
+            showToast('Account updated', 'success');
         }
         hideAccountForm();
         await loadAccounts();
     } catch (err) {
         errorDiv.textContent = err.message;
         errorDiv.style.display = '';
+        showToast(`Could not save account: ${err.message}`, 'error');
     } finally {
         saveBtn.disabled = false;
         saveBtn.textContent = 'Save';
@@ -933,10 +947,12 @@ async function deleteAccount(id) {
     try {
         await api.del(`/api/accounts/${id}`);
         await loadAccounts();
+        showToast('Account deleted', 'success');
     } catch (err) {
         const errorDiv = document.getElementById('acct-error');
         errorDiv.textContent = err.message;
         errorDiv.style.display = '';
+        showToast(`Could not delete account: ${err.message}`, 'error');
     }
 }
 
@@ -1069,14 +1085,17 @@ async function saveStrategy() {
         const body = { name, version, description, rules };
         if (stratFormMode === 'add') {
             await api.post('/api/strategies/', body);
+            showToast('Strategy created', 'success');
         } else {
             await api.put(`/api/strategies/${stratEditId}`, body);
+            showToast('Strategy updated', 'success');
         }
         hideStrategyForm();
         await loadStrategies();
     } catch (err) {
         errorDiv.textContent = err.message;
         errorDiv.style.display = '';
+        showToast(`Could not save strategy: ${err.message}`, 'error');
     } finally {
         saveBtn.disabled = false;
         saveBtn.textContent = 'Save';
@@ -1092,10 +1111,12 @@ async function deleteStrategy(id) {
     try {
         await api.del(`/api/strategies/${id}`);
         await loadStrategies();
+        showToast('Strategy deleted', 'success');
     } catch (err) {
         const errorDiv = document.getElementById('strat-error');
         errorDiv.textContent = err.message;
         errorDiv.style.display = '';
+        showToast(`Could not delete strategy: ${err.message}`, 'error');
     }
 }
 
@@ -1216,11 +1237,13 @@ async function saveTag() {
 
     try {
         await api.post('/api/tags/', { name, group_name });
+        showToast('Tag created', 'success');
         hideTagForm();
         await loadTags();
     } catch (err) {
         errorDiv.textContent = err.message;
         errorDiv.style.display = '';
+        showToast(`Could not save tag: ${err.message}`, 'error');
     } finally {
         saveBtn.disabled    = false;
         saveBtn.textContent = 'Save';
@@ -1236,10 +1259,12 @@ async function deleteTag(id) {
     try {
         await api.del(`/api/tags/${id}`);
         await loadTags();
+        showToast('Tag deleted', 'success');
     } catch (err) {
         const errorDiv = document.getElementById('tag-error');
         errorDiv.textContent = err.message;
         errorDiv.style.display = '';
+        showToast(`Could not delete tag: ${err.message}`, 'error');
     }
 }
 

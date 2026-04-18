@@ -8,6 +8,7 @@
 
 import { api } from '../api.js';
 import { escHtml } from '../utils.js';
+import { showToast } from '../toast.js';
 
 // ---- Module-level state ----
 
@@ -248,13 +249,16 @@ async function saveTransaction() {
     try {
         if (formState.mode === 'edit') {
             await api.put(`/api/transactions/${formState.id}`, payload);
+            showToast('Transaction updated', 'success');
         } else {
             await api.post('/api/transactions/', payload);
+            showToast('Transaction saved', 'success');
         }
         window.location.hash = '#/transactions';
     } catch (err) {
         errorEl.innerHTML = `<strong>Save failed</strong><p class="mt-2">${escHtml(err.message)}</p>`;
         errorEl.style.display = '';
+        showToast(`Could not save transaction: ${err.message}`, 'error');
         btn.disabled = false;
         btn.textContent = formState.mode === 'edit' ? 'Save Changes' : 'Save Transaction';
         formState.saving = false;
@@ -270,11 +274,13 @@ async function deleteTransaction() {
 
     try {
         await api.del(`/api/transactions/${formState.id}`);
+        showToast('Transaction deleted', 'success');
         window.location.hash = '#/transactions';
     } catch (err) {
         const errorEl = document.getElementById('form-error');
         errorEl.innerHTML = `<strong>Delete failed</strong><p class="mt-2">${escHtml(err.message)}</p>`;
         errorEl.style.display = '';
+        showToast(`Could not delete transaction: ${err.message}`, 'error');
         btn.disabled = false;
         btn.textContent = 'Delete';
     }

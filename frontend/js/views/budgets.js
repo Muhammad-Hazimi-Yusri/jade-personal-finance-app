@@ -8,6 +8,7 @@
 
 import { api } from '../api.js';
 import { escHtml, formatCurrency } from '../utils.js';
+import { showToast } from '../toast.js';
 
 // ---------------------------------------------------------------------------
 // Module state
@@ -266,14 +267,17 @@ async function saveBudget() {
         const body = { category, amount, period, start_date: startDate };
         if (formMode === 'add') {
             await api.post('/api/budgets/', body);
+            showToast('Budget created', 'success');
         } else {
             await api.put(`/api/budgets/${editId}`, body);
+            showToast('Budget updated', 'success');
         }
         hideForm();
         await loadBudgets();
     } catch (err) {
         errorDiv.textContent = err.message;
         errorDiv.style.display = '';
+        showToast(`Could not save budget: ${err.message}`, 'error');
     } finally {
         saveBtn.disabled = false;
         saveBtn.textContent = 'Save';
@@ -290,10 +294,12 @@ async function deleteBudget(id) {
     try {
         await api.del(`/api/budgets/${id}`);
         await loadBudgets();
+        showToast('Budget deleted', 'success');
     } catch (err) {
         const errorDiv = document.getElementById('budget-error');
         errorDiv.textContent = err.message;
         errorDiv.style.display = '';
+        showToast(`Could not delete budget: ${err.message}`, 'error');
     }
 }
 
@@ -305,6 +311,7 @@ async function toggleBudget(id) {
         const errorDiv = document.getElementById('budget-error');
         errorDiv.textContent = err.message;
         errorDiv.style.display = '';
+        showToast(`Could not toggle budget: ${err.message}`, 'error');
     }
 }
 
