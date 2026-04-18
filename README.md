@@ -161,7 +161,8 @@ jade/
 │   │   ├── ✅ 006_strategies.sql
 │   │   ├── ✅ 007_tags.sql
 │   │   ├── ✅ 008_daily_journal.sql
-│   │   └── ✅ 009_account_snapshots.sql
+│   │   ├── ✅ 009_account_snapshots.sql
+│   │   └── ✅ 010_trades.sql
 │   │
 │   ├── ✅ routes/               # API route blueprints
 │   │   ├── ✅ __init__.py
@@ -235,8 +236,9 @@ jade/
 ├── ✅ data/                     # SQLite database files (gitignored)
 │   └── 🔲 jade.db
 │
-├── 🔲 demo-data/                # Demo instance data (Phase 6)
-│   ├── 🔲 seed.sql              # SQL script to generate fake data
+├── ✅ demo-data/                # Demo instance data (Phase 6)
+│   ├── ✅ generate_seed.py      # Deterministic generator (writes seed.sql)
+│   ├── ✅ seed.sql              # Fake-data insert script (generator output)
 │   └── 🔲 seed.db               # Pre-built seed database (reset source)
 │
 └── ✅ tests/                    # Test suite
@@ -945,19 +947,35 @@ When `DEMO_MODE=true`, Flask should:
 
 ### Demo Seed Data (`demo-data/seed.sql`)
 
-The seed script should populate realistic-looking data:
+`seed.sql` is produced by `demo-data/generate_seed.py` — a deterministic
+Python generator (`random.seed(42)`). Regenerate with:
 
-- **~6 months of transactions** (~500 rows) across all Monzo categories with realistic amounts, names, and dates
+```bash
+python demo-data/generate_seed.py
+```
+
+The generator reuses the pure calculators in `app/services/trade_calculator.py`
+so trade P&L, R-multiples and durations match live behaviour exactly. It
+populates the domain tables only — `categories` and `import_profiles` are
+already seeded by `app.db.init_db()` before `seed.sql` runs.
+
+Current output:
+
+- **508 transactions** across ~6 months (2025-10-15 → 2026-04-15) with fixed
+  monthly salary, rent, utilities, subscriptions, weekly savings transfers
+  and randomised daily groceries/eating out/transport/shopping
+- **6 monthly budgets** (eating_out, groceries, transport, entertainment,
+  shopping, bills)
 - **1 trading account** ("Demo Trading Account", multi-asset, £10,000 starting balance)
 - **3 strategies** ("Breakout v1.0", "Mean Reversion", "Trend Following")
-- **~80 closed trades** across stocks, forex, crypto, and options with a ~55% win rate and ~1.6 profit factor
-- **5 open trades**
-- **3 months of daily journal entries** (~60 entries)
-- **Account snapshots** for equity curve data
-- **Budgets** for 6 categories
-- **Tags** like "earnings", "news-driven", "overtraded", "A+ setup", "revenge-trade"
+- **80 closed + 5 open trades** across stocks, forex, crypto and options —
+  achieved win rate ≈56%, profit factor ≈1.74
+- **5 tags** (earnings, news-driven, A+ setup, overtraded, revenge-trade)
+  with outcome-biased associations
+- **166 daily account snapshots** driving the equity curve
+- **69 daily journal entries** across the last 3 months
 
-All names, amounts, and dates should look realistic but be entirely fictional.
+All names, amounts and dates are fictional.
 
 ### Daily Reset Mechanism
 
@@ -1506,7 +1524,7 @@ def run_migrations(db_path):
 - [x] **6.1** Dockerfile and docker-compose.yml (production + demo containers)
 - [x] **6.2** Flask static file serving (frontend served by Flask, no separate web server)
 - [x] **6.3** `DEMO_MODE` flag: banner display + response header
-- [ ] **6.4** Demo seed data script (`demo-data/seed.sql`) with ~500 transactions, ~85 trades, journals
+- [x] **6.4** Demo seed data script (`demo-data/seed.sql`) with ~500 transactions, ~85 trades, journals
 - [ ] **6.5** Build `seed.db` from seed script, configure daily reset container
 - [ ] **6.6** Cloudflare Tunnel public hostname config (production + demo)
 - [ ] **6.7** Cloudflare Access policy setup for production (demo is public)
