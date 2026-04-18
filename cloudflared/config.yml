@@ -1,0 +1,19 @@
+# Reference ingress rules for Jade's Cloudflare Tunnel.
+# The tunnel runs on the host (same cloudflared process that serves Jellyfin and
+# other services on this home server), not inside docker-compose.
+#
+# To use: merge this `ingress:` block into ~/.cloudflared/config.yml alongside
+# your existing `tunnel:` UUID and `credentials-file:` entries. Do NOT commit
+# those values to this repo.
+#
+# Validate after editing the host config:
+#   cloudflared tunnel ingress validate ~/.cloudflared/config.yml
+#   cloudflared tunnel ingress rule https://jade.muhammadhazimiyusri.uk
+#   cloudflared tunnel ingress rule https://jade-demo.muhammadhazimiyusri.uk
+
+ingress:
+  - hostname: jade.muhammadhazimiyusri.uk
+    service: http://localhost:8000
+  - hostname: jade-demo.muhammadhazimiyusri.uk
+    service: http://localhost:8001
+  - service: http_status:404

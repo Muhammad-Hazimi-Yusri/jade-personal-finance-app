@@ -146,6 +146,8 @@ jade/
 ├── ✅ .env.example              # Environment variable template (Phase 6)
 ├── ✅ litestream.yml            # Database backup config (Phase 6)
 ├── ✅ wsgi.py                   # Gunicorn WSGI entry point (Phase 6)
+├── ✅ cloudflared/              # Reference Cloudflare Tunnel config (Phase 6)
+│   └── ✅ config.yml            # Ingress rules for prod + demo hostnames
 ├── ✅ requirements.txt          # Python dependencies (Phase 1)
 │
 ├── ✅ app/                      # Flask application (Phase 1)
@@ -1050,7 +1052,7 @@ Add a second public hostname in your tunnel (no Access policy):
 - Type: `HTTP`
 - URL: `localhost:8001`
 
-Or in `config.yml`:
+The canonical ingress block is committed to the repo at [`cloudflared/config.yml`](cloudflared/config.yml). Merge it into your host's `~/.cloudflared/config.yml` alongside your existing `tunnel:` UUID and `credentials-file:` entries (do not commit those):
 
 ```yaml
 ingress:
@@ -1059,6 +1061,14 @@ ingress:
   - hostname: jade-demo.muhammadhazimiyusri.uk
     service: http://localhost:8001
   - service: http_status:404
+```
+
+Validate after editing:
+
+```bash
+cloudflared tunnel ingress validate ~/.cloudflared/config.yml
+cloudflared tunnel ingress rule https://jade.muhammadhazimiyusri.uk
+cloudflared tunnel ingress rule https://jade-demo.muhammadhazimiyusri.uk
 ```
 
 ---
@@ -1563,7 +1573,7 @@ def run_migrations(db_path):
 - [x] **6.3** `DEMO_MODE` flag: banner display + response header
 - [x] **6.4** Demo seed data script (`demo-data/seed.sql`) with ~500 transactions, ~85 trades, journals
 - [x] **6.5** Build `seed.db` from seed script, configure daily reset container
-- [ ] **6.6** Cloudflare Tunnel public hostname config (production + demo)
+- [x] **6.6** Cloudflare Tunnel public hostname config (production + demo)
 - [ ] **6.7** Cloudflare Access policy setup for production (demo is public)
 - [ ] **6.8** Litestream backup configuration (production only)
 - [ ] **6.9** Settings page (manage accounts, strategies, categories, data export)
