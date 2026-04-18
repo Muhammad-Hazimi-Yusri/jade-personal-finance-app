@@ -238,8 +238,9 @@ jade/
 │
 ├── ✅ demo-data/                # Demo instance data (Phase 6)
 │   ├── ✅ generate_seed.py      # Deterministic generator (writes seed.sql)
+│   ├── ✅ build_seed_db.py      # Build seed.db from seed.sql (Phase 6.5)
 │   ├── ✅ seed.sql              # Fake-data insert script (generator output)
-│   └── 🔲 seed.db               # Pre-built seed database (reset source)
+│   └── 🔲 seed.db               # Pre-built seed database (gitignored, built locally)
 │
 └── ✅ tests/                    # Test suite
     ├── ✅ conftest.py
@@ -945,13 +946,25 @@ When `DEMO_MODE=true`, Flask should:
 2. **Set `X-Demo-Mode: true` response header** (useful for testing)
 3. Everything else works normally — full CRUD, uploads, trading, analytics
 
-### Demo Seed Data (`demo-data/seed.sql`)
+### Demo Seed Data (`demo-data/seed.sql` → `seed.db`)
 
 `seed.sql` is produced by `demo-data/generate_seed.py` — a deterministic
 Python generator (`random.seed(42)`). Regenerate with:
 
 ```bash
 python demo-data/generate_seed.py
+```
+
+`seed.db` is the reset source used by the demo sidecar container. It is
+built from `seed.sql` by `demo-data/build_seed_db.py`, which applies every
+migration, seeds the default categories and Monzo import profile, loads
+the domain data from `seed.sql`, then checkpoints and compacts the file.
+The resulting `seed.db` is a single-file snapshot (no WAL/SHM sidecars)
+and is gitignored — build it once on the host before starting the demo
+stack:
+
+```bash
+python demo-data/build_seed_db.py
 ```
 
 The generator reuses the pure calculators in `app/services/trade_calculator.py`
@@ -979,14 +992,11 @@ All names, amounts and dates are fictional.
 
 ### Daily Reset Mechanism
 
-A simple cron job or Docker restart policy resets the demo database:
-
-```bash
-# Cron job on host (add to crontab)
-0 3 * * * cp /path/to/jade/demo-data/seed.db /path/to/jade/demo-data/jade.db && docker restart jade-demo
-```
-
-Or use a sidecar container in Docker Compose:
+The `jade-demo-reset` sidecar in `docker-compose.yml` keeps the public
+demo instance deterministic. On startup it restores `jade.db` from
+`seed.db` once, then loops forever, sleeping until the next **03:00 UTC**
+and restoring again. Leftover WAL/SHM sidecars are removed on every
+reset so the running Flask process reopens a clean snapshot.
 
 ```yaml
 jade-demo-reset:
@@ -997,11 +1007,38 @@ jade-demo-reset:
     - ./demo-data:/data
   entrypoint: /bin/sh
   command: >
-    -c "while true; do
-      sleep 86400;
+    -c "
+    set -eu;
+    if [ ! -f /data/seed.db ]; then
+      echo 'ERROR: /data/seed.db missing — run `python demo-data/build_seed_db.py` on the host first.';
+      exit 1;
+    fi;
+    reset_db() {
       cp /data/seed.db /data/jade.db;
-      echo 'Demo database reset at $$(date)';
-    done"
+      rm -f /data/jade.db-wal /data/jade.db-shm;
+      echo \"[$$(date -u +%FT%TZ)] Demo database reset\";
+    };
+    reset_db;
+    while true; do
+      now=$$(date -u +%s);
+      midnight=$$(( now - now % 86400 ));
+      target=$$(( midnight + 3 * 3600 ));
+      if [ $$now -ge $$target ]; then
+        target=$$(( target + 86400 ));
+      fi;
+      sleep $$(( target - now ));
+      reset_db;
+    done
+    "
+```
+
+If you prefer cron on the host, the equivalent is:
+
+```bash
+# Reset at 03:00 UTC daily (requires seed.db built via build_seed_db.py)
+0 3 * * * cp /path/to/jade/demo-data/seed.db /path/to/jade/demo-data/jade.db \
+  && rm -f /path/to/jade/demo-data/jade.db-wal /path/to/jade/demo-data/jade.db-shm \
+  && docker restart jade-demo
 ```
 
 ### Cloudflare Tunnel Config for Demo
@@ -1525,7 +1562,7 @@ def run_migrations(db_path):
 - [x] **6.2** Flask static file serving (frontend served by Flask, no separate web server)
 - [x] **6.3** `DEMO_MODE` flag: banner display + response header
 - [x] **6.4** Demo seed data script (`demo-data/seed.sql`) with ~500 transactions, ~85 trades, journals
-- [ ] **6.5** Build `seed.db` from seed script, configure daily reset container
+- [x] **6.5** Build `seed.db` from seed script, configure daily reset container
 - [ ] **6.6** Cloudflare Tunnel public hostname config (production + demo)
 - [ ] **6.7** Cloudflare Access policy setup for production (demo is public)
 - [ ] **6.8** Litestream backup configuration (production only)

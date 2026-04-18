@@ -15,6 +15,39 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ---
 
+## [0.6.5] — 2026-04-18
+
+### Added
+
+#### Phase 6.5 — Build `seed.db` from seed script and configure daily reset container
+
+- New **`demo-data/build_seed_db.py`** script — builds a clean, single-file
+  `seed.db` snapshot from `seed.sql`. Wipes any existing `seed.db` (plus
+  WAL/SHM sidecars), creates a fresh SQLite database via the real Flask
+  `init_db()` pipeline (migrations + default categories + Monzo import
+  profile), loads `seed.sql` into it, then checkpoints the WAL and switches
+  to `journal_mode=DELETE` so the resulting file is a single compact
+  artefact the reset sidecar can `cp` atomically. Prints a row-count summary
+  per table on completion.
+- **`jade-demo-reset` sidecar rewritten** to align to **03:00 UTC** instead
+  of sleeping 24h from container start. Performs an initial reset on
+  startup (so the demo always boots from a known state), then loops
+  forever, sleeping until the next 03:00 UTC boundary and restoring
+  `jade.db` from `seed.db`. Uses epoch-second arithmetic to stay portable
+  across busybox `ash` (no bash-only `10#` base prefix). Every reset also
+  removes `jade.db-wal` / `jade.db-shm` so the running Flask process
+  reopens a pristine snapshot. Fails fast with a helpful message if
+  `seed.db` is missing, pointing the operator at `build_seed_db.py`.
+- Documented the build-and-reset flow in the README (Demo Seed Data and
+  Daily Reset Mechanism sections).
+
+### Fixed
+
+- `__version__` in `app/__init__.py` and the `VERSION` file drifted from
+  the v0.6.4 release; bumped to `0.6.5` alongside this task.
+
+---
+
 ## [0.6.3] — 2026-04-05
 
 ### Added
