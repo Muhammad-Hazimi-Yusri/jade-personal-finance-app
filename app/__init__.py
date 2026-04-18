@@ -6,7 +6,7 @@ Flask application factory.
 import os
 from pathlib import Path
 
-__version__ = "0.6.7"
+__version__ = "0.6.14"
 
 import logging
 

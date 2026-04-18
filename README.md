@@ -181,7 +181,8 @@ jade/
 │   │   ├── ✅ reports.py        # Spending reports & comparisons (Phase 3)
 │   │   ├── ✅ dashboard.py       # Dashboard summary data (Phase 3)
 │   │   ├── ✅ journal.py         # Daily journal CRUD (Phase 4)
-│   │   └── ✅ snapshots.py      # Account snapshot CRUD (Phase 5)
+│   │   ├── ✅ snapshots.py      # Account snapshot CRUD (Phase 5)
+│   │   └── ✅ export.py         # Data export (CSV + JSON, Phase 6.9)
 │   │
 │   ├── ✅ services/             # Business logic layer
 │   │   ├── ✅ __init__.py
@@ -210,16 +211,12 @@ jade/
 │   ├── ✅ css/
 │   │   └── ✅ style.css         # Full design system (Phase 1)
 │   ├── ✅ js/
-│   │   ├── ✅ app.js            # Router, navigation, initialisation (Phase 1)
-│   │   ├── ✅ api.js            # Fetch wrapper for all API calls (Phase 1)
+│   │   ├── ✅ app.js            # Router, navigation, sidebar drawer (Phase 1, 6.12)
+│   │   ├── ✅ api.js            # Fetch wrapper, network-error toasts (Phase 1, 6.13)
 │   │   ├── ✅ utils.js          # Shared formatting, helpers
-│   │   ├── 🔲 components/       # Reusable UI components
-│   │   │   ├── ✅ date-range-selector.js
-│   │   │   ├── 🔲 modal.js
-│   │   │   ├── 🔲 toast.js
-│   │   │   ├── 🔲 table.js
-│   │   │   ├── 🔲 chart-helpers.js
-│   │   │   └── 🔲 form-helpers.js
+│   │   ├── ✅ toast.js          # Toast notification system (Phase 6.10)
+│   │   ├── ✅ components/       # Reusable UI components
+│   │   │   └── ✅ date-range-selector.js
 │   │   └── ✅ views/            # Page-level view modules
 │   │       ├── ✅ dashboard.js
 │   │       ├── ✅ transactions.js
@@ -745,6 +742,23 @@ All responses use JSON. All monetary values are returned as decimals (e.g., `5.1
 |--------|----------|-------------|
 | `GET` | `/api/dashboard/finance` | Finance overview: balance, income, expenses, budget status. Query: `months`, `start_date`, `end_date`, `limit` |
 | `GET` | `/api/dashboard/trading` | Trading overview: open trades, today's P&L, key metrics |
+
+### Data Export
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/api/export/transactions.csv` | All transactions as CSV (pence → decimal GBP) |
+| `GET` | `/api/export/trades.csv` | All trades as CSV (pence → decimal GBP) |
+| `GET` | `/api/export/all.json` | Full JSON backup: every user-owned table plus schema version |
+
+### Meta & Health
+
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| `GET` | `/health` | Container health check (returns `{"status":"ok"}`) |
+| `GET` | `/api/meta` | App version + `demo_mode` flag |
+
+> **Demo mode:** when `DEMO_MODE=true` the app rejects any `POST`/`PUT`/`PATCH`/`DELETE` with `403 {"error":"Demo mode — changes are disabled"}`. Export endpoints are GET and remain available.
 
 ---
 
@@ -1395,14 +1409,23 @@ ingress:
 
 ### Litestream Config (`litestream.yml`)
 
+Values are substituted from environment variables so the YAML stays clean of secrets:
+
 ```yaml
 dbs:
   - path: /app/data/jade.db
     replicas:
       - type: s3
-        bucket: jade-backups
-        path: db
-        endpoint: https://YOUR_R2_ENDPOINT
+        bucket: ${LITESTREAM_BUCKET}
+        path: ${LITESTREAM_PATH}
+        endpoint: ${LITESTREAM_ENDPOINT}
+        region: ${LITESTREAM_REGION}
+```
+
+Set `LITESTREAM_BUCKET`, `LITESTREAM_ENDPOINT`, `LITESTREAM_PATH`, `LITESTREAM_REGION`, `S3_ACCESS_KEY`, `S3_SECRET_KEY` in `.env` (see `.env.example`). The `litestream` Compose service runs under an opt-in `backup` profile and is started explicitly:
+
+```bash
+docker compose --profile backup up -d
 ```
 
 ### Deployment Steps
@@ -1416,18 +1439,21 @@ mkdir -p data
 
 # 3. Set environment variables (only needed if using Litestream)
 cp .env.example .env
-# Edit .env with S3/R2 credentials
+# Edit .env with S3/R2 credentials and Litestream bucket/endpoint
 
-# 4. Launch
-docker-compose up -d
+# 4. Launch core services
+docker compose up -d
 
-# 5. Add public hostname in Cloudflare Zero Trust dashboard
+# 5. (Optional) Start Litestream backup in addition to the core services
+docker compose --profile backup up -d
+
+# 6. Add public hostname in Cloudflare Zero Trust dashboard
 #    (see Cloudflare Tunnel Configuration above)
 
-# 6. Set up Cloudflare Access policy
+# 7. Set up Cloudflare Access policy
 #    (see Authentication & Security section)
 
-# 7. Verify
+# 8. Verify
 curl http://localhost:8000/api/dashboard/finance   # local test
 # Then visit https://jade.muhammadhazimiyusri.uk   # through tunnel
 ```
@@ -1512,7 +1538,7 @@ def run_migrations(db_path):
 
 ## Development Roadmap
 
-> **Current Phase: Phase 6 — Deployment & Polish**
+> **Current Phase: Phase 6 — Deployment & Polish (MVP complete)**
 >
 > When completing a task, update this README: check the box `[x]` and update the Project Structure status icons from 🔲 to ✅ for any files created.
 
@@ -1589,13 +1615,13 @@ def run_migrations(db_path):
 - [x] **6.5** Build `seed.db` from seed script, configure daily reset container
 - [x] **6.6** Cloudflare Tunnel public hostname config (production + demo)
 - [x] **6.7** Cloudflare Access policy setup for production (demo is public)
-- [ ] **6.8** Litestream backup configuration (production only)
-- [ ] **6.9** Settings page (manage accounts, strategies, categories, data export)
-- [ ] **6.10** Toast notifications for actions
-- [ ] **6.11** Loading states and empty states
-- [ ] **6.12** Mobile responsive layout
-- [ ] **6.13** Error handling (API errors, network failures, form validation)
-- [ ] **6.14** README cleanup and final documentation
+- [x] **6.8** Litestream backup configuration (production only)
+- [x] **6.9** Settings page (manage accounts, strategies, categories, data export)
+- [x] **6.10** Toast notifications for actions
+- [x] **6.11** Loading states and empty states
+- [x] **6.12** Mobile responsive layout
+- [x] **6.13** Error handling (API errors, network failures, form validation)
+- [x] **6.14** README cleanup and final documentation
 
 ### Future Ideas (Post-MVP)
 
