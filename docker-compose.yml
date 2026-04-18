@@ -42,6 +42,9 @@ services:
       retries: 3
       start_period: 10s
 
+  # Restores demo-data/jade.db from demo-data/seed.db once on startup and
+  # then every day at 03:00 UTC. Removes any leftover WAL/SHM sidecars so
+  # the running Flask process reopens a clean snapshot.
   jade-demo-reset:
     image: alpine:3
     container_name: jade-demo-reset
@@ -50,11 +53,29 @@ services:
       - ./demo-data:/data
     entrypoint: /bin/sh
     command: >
-      -c "while true; do
-        sleep 86400;
+      -c "
+      set -eu;
+      if [ ! -f /data/seed.db ]; then
+        echo 'ERROR: /data/seed.db missing — run `python demo-data/build_seed_db.py` on the host first.';
+        exit 1;
+      fi;
+      reset_db() {
         cp /data/seed.db /data/jade.db;
-        echo 'Demo database reset at $$(date)';
-      done"
+        rm -f /data/jade.db-wal /data/jade.db-shm;
+        echo \"[$$(date -u +%FT%TZ)] Demo database reset\";
+      };
+      reset_db;
+      while true; do
+        now=$$(date -u +%s);
+        midnight=$$(( now - now % 86400 ));
+        target=$$(( midnight + 3 * 3600 ));
+        if [ $$now -ge $$target ]; then
+          target=$$(( target + 86400 ));
+        fi;
+        sleep $$(( target - now ));
+        reset_db;
+      done
+      "
     depends_on:
       - jade-demo
 

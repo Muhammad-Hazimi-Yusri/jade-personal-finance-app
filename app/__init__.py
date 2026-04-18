@@ -6,7 +6,7 @@ Flask application factory.
 import os
 from pathlib import Path
 
-__version__ = "0.6.3"
+__version__ = "0.6.5"
 
 from flask import Flask, jsonify, send_from_directory
 
