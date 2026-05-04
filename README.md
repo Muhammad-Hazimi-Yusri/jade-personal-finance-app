@@ -154,6 +154,7 @@ jade/
 ├── ✅ app/                      # Flask application (Phase 1)
 │   ├── ✅ __init__.py           # App factory, register blueprints
 │   ├── ✅ db.py                 # SQLite connection manager, PRAGMAs
+│   ├── ✅ auth.py               # Cloudflare Access JWT verification (Phase 7.1, 7.2)
 │   ├── ✅ schema.sql            # Full database schema
 │   ├── ✅ migrations/           # Numbered migration files
 │   │   ├── ✅ 001_initial.sql
@@ -1538,7 +1539,7 @@ def run_migrations(db_path):
 
 ## Development Roadmap
 
-> **Current Phase: Phase 6 — Deployment & Polish (MVP complete)**
+> **Current Phase: Phase 7 — Hardening**
 >
 > When completing a task, update this README: check the box `[x]` and update the Project Structure status icons from 🔲 to ✅ for any files created.
 
@@ -1622,6 +1623,33 @@ def run_migrations(db_path):
 - [x] **6.12** Mobile responsive layout
 - [x] **6.13** Error handling (API errors, network failures, form validation)
 - [x] **6.14** README cleanup and final documentation
+
+### Phase 7: Hardening
+> Defence-in-depth on top of Cloudflare Access. Cloudflare Access is the
+> primary auth boundary; this phase ensures Flask still rejects unauthenticated
+> requests if Access is ever misconfigured or bypassed (e.g. direct LAN access
+> to the container, a stale tunnel route, or a public hostname accidentally
+> created without an Access policy).
+
+- [x] **7.1** Verify Cloudflare Access JWT (`Cf-Access-Jwt-Assertion` header
+      / `CF_Authorization` cookie) on every request. Reject missing, invalid,
+      wrong-audience, and wrong-issuer tokens with `403`. Bypass when
+      `DEMO_MODE=true` and for the `/health` endpoint.
+- [x] **7.2** Cache Cloudflare's JWKS in-process with a 1-hour TTL and a
+      one-shot refresh on unknown `kid` (handles key rotation without
+      per-request fetches).
+- [x] **7.3** Add `CF_ACCESS_AUD` and `CF_ACCESS_TEAM_DOMAIN` to
+      `.env.example` with instructions on where to find each value in the
+      Cloudflare Zero Trust dashboard.
+- [x] **7.4** Bind the production container's host port to `127.0.0.1:8000`
+      (not `0.0.0.0`) in `docker-compose.yml` so the raw Flask port is
+      unreachable from the LAN — only `cloudflared` on the same host can
+      connect.
+- [ ] **7.5** Rate-limit `/api/upload` (CSV import) with a small in-process
+      token bucket to prevent accidental abuse from a compromised session.
+- [ ] **7.6** Document an Access-application audit checklist in
+      `cloudflared/access.yml` (verify policies, session duration, allowed
+      emails) plus an incognito smoke-test runbook.
 
 ### Future Ideas (Post-MVP)
 

@@ -33,6 +33,8 @@ def create_app(test_config: dict | None = None) -> Flask:
         DATABASE_PATH=os.environ.get("DATABASE_PATH", "data/jade.db"),
         DEMO_MODE=os.environ.get("DEMO_MODE", "false").lower() == "true",
         MAX_CONTENT_LENGTH=10 * 1024 * 1024,  # 10 MB upload limit
+        CF_ACCESS_AUD=os.environ.get("CF_ACCESS_AUD") or None,
+        CF_ACCESS_TEAM_DOMAIN=os.environ.get("CF_ACCESS_TEAM_DOMAIN") or None,
     )
 
     if test_config is not None:
@@ -44,6 +46,10 @@ def create_app(test_config: dict | None = None) -> Flask:
 
     # --- Register teardown ---
     app.teardown_appcontext(close_db)
+
+    # --- Cloudflare Access JWT verification (defence-in-depth) ---
+    from . import auth
+    auth.init_app(app)
 
     # --- Register blueprints ---
     from .routes.transactions import bp as transactions_bp

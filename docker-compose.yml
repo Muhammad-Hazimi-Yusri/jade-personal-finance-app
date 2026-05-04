@@ -6,14 +6,21 @@ services:
     build: .
     container_name: jade-app
     restart: unless-stopped
+    # Bind to localhost only — `cloudflared` runs on the same host and reaches
+    # Flask via 127.0.0.1, so there's no reason to expose port 8000 to the LAN.
+    # Anything that bypassed the tunnel would still hit the JWT middleware,
+    # but binding here removes the attack surface entirely.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     volumes:
       - ./data:/app/data
       - ./frontend:/app/frontend
     environment:
       - FLASK_ENV=production
       - DATABASE_PATH=/app/data/jade.db
+      # Phase 7 hardening — see .env.example for where to find each value.
+      - CF_ACCESS_AUD=${CF_ACCESS_AUD:-}
+      - CF_ACCESS_TEAM_DOMAIN=${CF_ACCESS_TEAM_DOMAIN:-}
     healthcheck:
       test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
       interval: 30s
@@ -26,8 +33,10 @@ services:
     build: .
     container_name: jade-demo
     restart: unless-stopped
+    # Same host-binding rationale as `jade-app` above — public exposure is
+    # handled by cloudflared, not by binding the raw port to all interfaces.
     ports:
-      - "8001:8000"
+      - "127.0.0.1:8001:8000"
     volumes:
       - ./demo-data:/app/data
       - ./frontend:/app/frontend
