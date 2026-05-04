@@ -150,10 +150,18 @@ def create_app(test_config: dict | None = None) -> Flask:
     # clients and gives the frontend a single shape to parse.
     @app.errorhandler(404)
     def handle_not_found(_err):
+        # API misses always return JSON so URL typos surface clearly to
+        # the frontend instead of being masked as HTML.
         if request.path.startswith("/api/"):
             return jsonify({"error": "Not found"}), 404
-        # For non-API routes fall back to the SPA shell so client-side
-        # routing can render a 404 view if it wants to.
+        # Asset-shaped paths (anything with a file extension in the last
+        # segment) should also 404 honestly — serving index.html for a
+        # missing /js/foo.js would just hide a typo.
+        last_segment = request.path.rsplit("/", 1)[-1]
+        if "." in last_segment:
+            return jsonify({"error": "Not found"}), 404
+        # SPA routes (clean paths like /transactions) fall back to the
+        # shell so client-side routing can render its own 404 view.
         response = send_from_directory(frontend_dir, "index.html")
         response.headers["Cache-Control"] = "no-cache, must-revalidate"
         return response, 200

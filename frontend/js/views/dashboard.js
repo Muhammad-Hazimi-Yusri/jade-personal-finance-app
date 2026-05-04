@@ -160,8 +160,8 @@ async function loadDashboard(startDate, endDate) {
 
     try {
         const [dashData, catData] = await Promise.all([
-            api.get(`/dashboard/finance${params}`),
-            api.get('/categories/'),
+            api.get(`/api/dashboard/finance${params}`),
+            api.get('/api/categories/'),
         ]);
 
         data = dashData;
