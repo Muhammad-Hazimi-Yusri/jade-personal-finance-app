@@ -131,8 +131,8 @@ async function loadReport(startDate, endDate) {
 
     try {
         const [reportData, catData] = await Promise.all([
-            api.get(`/reports/spending${params}`),
-            api.get('/categories/'),
+            api.get(`/api/reports/spending${params}`),
+            api.get('/api/categories/'),
         ]);
 
         data = reportData;
