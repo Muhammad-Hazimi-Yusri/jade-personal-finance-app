@@ -1115,15 +1115,16 @@ Category split
 
 ### Parsing Rules
 
-1. **Date** is ISO 8601 with UTC suffix: `2024-01-15T12:20:18Z`
+1. **Date** is `DD/MM/YYYY` (e.g. `02/02/2026`) and **Time** is `HH:MM:SS` — combined into ISO 8601 with `Z` suffix on import (e.g. `2026-02-02T03:09:56Z`). Legacy ISO 8601 datetimes in the Date column are also accepted.
 2. **Amount** is a signed decimal in pounds (not pence): `-5.10` for debits, `250.00` for credits
 3. **Category** is snake_case: `eating_out`, `personal_care`, `groceries`
 4. **Transaction ID** is used for deduplication — skip rows with existing `monzo_id`
-5. **Type** values: `Card payment`, `Faster payment`, `Direct debit`, `Standing order`, `Pot transfer`, `Bank transfer`
+5. **Type** values: `Card payment`, `Faster payment`, `Direct Debit`, `Pot transfer`, `Monzo-to-Monzo`, `Flex`, `monzo_paid`, `Bacs (Direct Credit)`
 6. **is_income** is derived: `1` if `amount > 0`, else `0`
-7. **Time** column is often empty — ignore it, use Date column
+7. **Name** is empty for some types (`monzo_paid` Perks, `Flex` repayments) — falls back to `Description`, then `Type`
 8. **Local amount/currency** are only populated for foreign transactions
 9. **Category split** is rarely used — store as-is if present
+10. **Money Out / Money In** columns (added in newer Monzo exports) are tolerated and ignored — the signed `Amount` column is the source of truth
 
 ### Import Flow
 
