@@ -28,6 +28,14 @@ def create_app(test_config: dict | None = None) -> Flask:
     """
     app = Flask(__name__, instance_relative_config=False)
 
+    # All API routes are JSON; URL canonicalisation isn't needed. Disabling
+    # strict_slashes prevents 308 redirects that break HTTPS clients behind a
+    # plain-HTTP reverse proxy: cloudflared connects to localhost over HTTP,
+    # so wsgi.url_scheme is 'http' and the auto-generated Location header
+    # would also be http://, which the browser blocks via mixed-content /
+    # CSP connect-src 'self'.
+    app.url_map.strict_slashes = False
+
     # --- Default configuration ---
     app.config.from_mapping(
         DATABASE_PATH=os.environ.get("DATABASE_PATH", "data/jade.db"),

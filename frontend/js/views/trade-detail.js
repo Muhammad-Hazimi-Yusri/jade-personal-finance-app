@@ -19,8 +19,8 @@ export async function render(container) {
     try {
         [{ trade }, { accounts }, { strategies }] = await Promise.all([
             api.get(`/api/trades/${id}`),
-            api.get('/api/accounts'),
-            api.get('/api/strategies'),
+            api.get('/api/accounts/'),
+            api.get('/api/strategies/'),
         ]);
     } catch (err) {
         container.innerHTML = `

@@ -237,7 +237,7 @@ async function loadTransactions() {
     }
 
     try {
-        const data = await api.get(`/api/transactions?${params}`);
+        const data = await api.get(`/api/transactions/?${params}`);
         renderRows(data.transactions ?? []);
         renderPagination(data.pagination ?? {});
     } catch (err) {
