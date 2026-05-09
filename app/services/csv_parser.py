@@ -46,7 +46,6 @@ _MONZO_HEADERS_SET: frozenset[str] = frozenset(_MONZO_HEADERS)
 _REQUIRED_ROW_FIELDS: frozenset[str] = frozenset({
     "Transaction ID",
     "Date",
-    "Name",
     "Amount",
     "Currency",
 })
@@ -87,28 +86,49 @@ def _normalize_header(header: str) -> str:
     return header.strip().lstrip("\ufeff")
 
 
-def _parse_monzo_date(value: str, row_num: int) -> str:
+def _parse_monzo_date(date_value: str, time_value: str, row_num: int) -> str:
     """Validate and return an ISO 8601 date string from a Monzo CSV row.
 
-    Monzo dates look like: ``2024-01-15T12:20:18Z``
+    Modern Monzo exports use a ``DD/MM/YYYY`` Date column with a
+    separate ``HH:MM:SS`` Time column. Older exports used a single
+    ISO 8601 datetime in the Date column (e.g. ``2024-01-15T12:20:18Z``).
+    Both formats are accepted.
 
     Args:
-        value: The raw date string from the CSV.
+        date_value: The raw value from the CSV ``Date`` column.
+        time_value: The raw value from the CSV ``Time`` column (may be empty).
         row_num: 1-based row number for error messages.
 
     Returns:
-        The validated date string (unchanged).
+        ISO 8601 datetime string with ``Z`` suffix.
 
     Raises:
         ValueError: If the date cannot be parsed.
     """
+    # Legacy path: ISO 8601 datetime already in the Date column.
     try:
-        datetime.fromisoformat(value.replace("Z", "+00:00"))
+        datetime.fromisoformat(date_value.replace("Z", "+00:00"))
+        return date_value
     except (ValueError, AttributeError):
+        pass
+
+    # Modern path: DD/MM/YYYY plus optional HH:MM:SS time.
+    try:
+        d = datetime.strptime(date_value, "%d/%m/%Y").date()
+    except ValueError:
         raise ValueError(
-            f"Row {row_num}: invalid date format: {value!r}"
+            f"Row {row_num}: invalid date format: {date_value!r}"
         )
-    return value
+
+    time_value = (time_value or "").strip()
+    if time_value:
+        try:
+            t = datetime.strptime(time_value, "%H:%M:%S").time()
+            return f"{d.isoformat()}T{t.isoformat()}Z"
+        except ValueError:
+            pass
+
+    return f"{d.isoformat()}T00:00:00Z"
 
 
 def _get_monzo_profile(db: sqlite3.Connection) -> dict:
@@ -214,8 +234,22 @@ def _parse_monzo_row(
             )
 
     monzo_id = row["Transaction ID"].strip()
-    date = _parse_monzo_date(row["Date"].strip(), row_num)
-    name = row["Name"].strip()
+    date = _parse_monzo_date(
+        row["Date"].strip(),
+        row.get("Time", "").strip(),
+        row_num,
+    )
+
+    # Name is empty for some transaction types (e.g. monzo_paid Perks,
+    # Flex repayments). Fall back to Description or Type so the row can
+    # still be imported.
+    name = row.get("Name", "").strip()
+    if not name:
+        name = (
+            row.get("Description", "").strip()
+            or row.get("Type", "").strip()
+            or "Unknown"
+        )
 
     # --- Amount: signed decimal pounds → integer pence ---
     try:
