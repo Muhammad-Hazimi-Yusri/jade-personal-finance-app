@@ -8,8 +8,8 @@
  *
  * Usage:
  *   import { api } from './api.js';
- *   const data = await api.get('/api/transactions');
- *   await api.post('/api/transactions', { name: 'Coffee', amount: -3.50, ... });
+ *   const data = await api.get('/api/transactions/');
+ *   await api.post('/api/transactions/', { name: 'Coffee', amount: -3.50, ... });
  */
 
 import { showToast } from './toast.js';
