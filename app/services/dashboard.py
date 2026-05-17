@@ -11,6 +11,22 @@ of the app only sees decimals.
 import sqlite3
 from datetime import date, timedelta
 
+from app.services.csv_parser import TRANSFER_CATEGORIES
+
+
+# ---------------------------------------------------------------------------
+# SQL fragment shared by all aggregation queries
+# ---------------------------------------------------------------------------
+
+# Inline literal of the transfer categories — small, fixed list, safe to
+# interpolate (no user input). Building the SQL fragment once avoids
+# repeating placeholder bookkeeping in every query below.
+_NOT_TRANSFER_SQL = (
+    "category NOT IN ("
+    + ", ".join(f"'{c}'" for c in TRANSFER_CATEGORIES)
+    + ")"
+)
+
 
 # ---------------------------------------------------------------------------
 # Private helpers
@@ -142,14 +158,16 @@ def get_summary(
         _, period_start, period_end = boundaries[0]
 
     row = db.execute(
-        """
+        f"""
         SELECT
             COALESCE(SUM(amount), 0) AS balance,
             COALESCE(SUM(CASE WHEN date >= ? AND date < ?
                               AND amount > 0
+                              AND {_NOT_TRANSFER_SQL}
                          THEN amount ELSE 0 END), 0) AS period_income,
             COALESCE(SUM(CASE WHEN date >= ? AND date < ?
                               AND amount < 0
+                              AND {_NOT_TRANSFER_SQL}
                          THEN amount ELSE 0 END), 0) AS period_expenses
         FROM transactions
         """,
@@ -205,7 +223,7 @@ def get_income_vs_expenses(
     range_end = boundaries[-1][2]
 
     rows = db.execute(
-        """
+        f"""
         SELECT
             strftime('%Y-%m', date) AS month_key,
             COALESCE(SUM(CASE WHEN amount > 0 THEN amount
@@ -214,6 +232,7 @@ def get_income_vs_expenses(
                          ELSE 0 END), 0) AS expenses
         FROM transactions
         WHERE date >= ? AND date < ?
+          AND {_NOT_TRANSFER_SQL}
         GROUP BY month_key
         ORDER BY month_key
         """,
@@ -271,7 +290,7 @@ def get_spending_by_category(
         _, month_start, month_end = boundaries[0]
 
     rows = db.execute(
-        """
+        f"""
         SELECT
             t.category,
             c.label  AS display_name,
@@ -282,6 +301,7 @@ def get_spending_by_category(
         WHERE t.amount < 0
           AND t.date >= ?
           AND t.date < ?
+          AND t.{_NOT_TRANSFER_SQL}
         GROUP BY t.category
         ORDER BY total DESC
         """,
@@ -336,7 +356,7 @@ def get_cash_flow(
     range_end = boundaries[-1][2]
 
     rows = db.execute(
-        """
+        f"""
         SELECT
             strftime('%Y-%m', date) AS month_key,
             COALESCE(SUM(CASE WHEN amount > 0 THEN amount
@@ -345,6 +365,7 @@ def get_cash_flow(
                          ELSE 0 END), 0) AS expenses
         FROM transactions
         WHERE date >= ? AND date < ?
+          AND {_NOT_TRANSFER_SQL}
         GROUP BY month_key
         ORDER BY month_key
         """,

@@ -414,3 +414,66 @@ def delete_transaction(db: sqlite3.Connection, transaction_id: int) -> bool:
     )
     db.commit()
     return cursor.rowcount > 0
+
+
+def recategorize_transfers(db: sqlite3.Connection) -> dict:
+    """Re-run transfer auto-detection across all existing transactions.
+
+    Mirrors the rules in ``csv_parser._detect_transfer_category`` and
+    migration 011: Pot transfers → ``savings``; Flex debits → ``transfers``;
+    Faster Payment / Bacs to Moneybox / Trading 212 / Seccl → ``savings``.
+
+    Skips rows where the user has explicitly set ``custom_category`` and
+    rows already in the target category, so it's idempotent and safe to
+    re-run.
+
+    Returns:
+        Counts dict ``{pot_transfers, flex_repayments, investment_providers,
+        total}`` so the UI can report what changed.
+    """
+    pot_cursor = db.execute(
+        """
+        UPDATE transactions
+        SET category = 'savings', updated_at = datetime('now')
+        WHERE type = 'Pot transfer'
+          AND custom_category IS NULL
+          AND category != 'savings'
+        """
+    )
+    pot_count = pot_cursor.rowcount
+
+    flex_cursor = db.execute(
+        """
+        UPDATE transactions
+        SET category = 'transfers', updated_at = datetime('now')
+        WHERE type = 'Flex' AND amount < 0
+          AND custom_category IS NULL
+          AND category != 'transfers'
+        """
+    )
+    flex_count = flex_cursor.rowcount
+
+    investment_cursor = db.execute(
+        """
+        UPDATE transactions
+        SET category = 'savings', updated_at = datetime('now')
+        WHERE type IN ('Faster payment', 'Bacs (Direct Credit)')
+          AND custom_category IS NULL
+          AND category NOT IN ('savings', 'transfers')
+          AND (
+            lower(name) LIKE '%moneybox%'
+            OR lower(name) LIKE '%trading 212%'
+            OR lower(name) LIKE '%seccl%'
+          )
+        """
+    )
+    investment_count = investment_cursor.rowcount
+
+    db.commit()
+
+    return {
+        "pot_transfers": pot_count,
+        "flex_repayments": flex_count,
+        "investment_providers": investment_count,
+        "total": pot_count + flex_count + investment_count,
+    }

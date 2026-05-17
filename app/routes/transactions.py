@@ -77,6 +77,20 @@ def list_transactions():
     return jsonify(result), 200
 
 
+@bp.post("/recategorize-transfers")
+def recategorize_transfers():
+    """Re-apply transfer auto-detection to all existing transactions.
+
+    Useful after upgrading or after adding new auto-detection rules — runs
+    the same updates as migration 011 against the current data.
+
+    Returns:
+        200 with counts per detection rule (idempotent; safe to re-run).
+    """
+    result = tx_service.recategorize_transfers(get_db())
+    return jsonify(result), 200
+
+
 @bp.get("/<int:transaction_id>")
 def get_transaction(transaction_id: int):
     """Get a single transaction by ID.

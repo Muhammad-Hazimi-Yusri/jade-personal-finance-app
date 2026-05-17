@@ -11,6 +11,17 @@ of the app only sees decimals.
 import sqlite3
 from datetime import date, timedelta
 
+from app.services.csv_parser import TRANSFER_CATEGORIES
+
+# Inline SQL fragment to exclude internal transfers (savings/transfers
+# categories) from spending aggregations. Built once at module load —
+# values are fixed snake_case keys, no user input.
+_NOT_TRANSFER_SQL = (
+    "category NOT IN ("
+    + ", ".join(f"'{c}'" for c in TRANSFER_CATEGORIES)
+    + ")"
+)
+
 
 # ---------------------------------------------------------------------------
 # Private helpers
@@ -131,7 +142,7 @@ def get_spending_comparison(
 
     # Single query with conditional aggregation for both periods
     rows = db.execute(
-        """
+        f"""
         SELECT
             t.category,
             c.label   AS display_name,
@@ -145,6 +156,7 @@ def get_spending_comparison(
         WHERE t.amount < 0
           AND t.date >= ?
           AND t.date < ?
+          AND t.{_NOT_TRANSFER_SQL}
         GROUP BY t.category
         ORDER BY current_total DESC
         """,

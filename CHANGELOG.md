@@ -13,6 +13,28 @@ Versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
 
+### Fixed
+
+- **Dashboard expense totals no longer include internal transfers**
+  Pot transfers, Flex repayments, and Faster Payments to Moneybox / Trading 212
+  / Seccl were all being counted as "expenses" by the dashboard because the
+  aggregations treated every negative-amount transaction as spending. For
+  example, a 6-month window containing ~£13k of pot moves and investment
+  contributions was showing expenses of £17.7k against actual consumer
+  spending closer to £4k.
+  - `csv_parser._detect_transfer_category` now standardises these rows into
+    the `savings` and `transfers` categories at import time (new Tier 1b in
+    the categorisation pipeline).
+  - `dashboard.get_summary`, `get_income_vs_expenses`,
+    `get_spending_by_category`, `get_cash_flow` and
+    `reports.get_spending_comparison` exclude `savings` and `transfers` from
+    income/expense sums (running balance is unaffected).
+  - Migration `011_recategorize_transfers.sql` retroactively updates existing
+    rows on next startup; **Settings → Maintenance → Re-categorise transfers**
+    (POST `/api/transactions/recategorize-transfers`) provides the same fix
+    on demand. Both paths skip rows where the user has set `custom_category`.
+  - New test suite `tests/test_dashboard_transfers.py` (26 tests).
+
 ---
 
 ## [0.6.7] — 2026-04-18

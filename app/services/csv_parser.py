@@ -50,6 +50,18 @@ _REQUIRED_ROW_FIELDS: frozenset[str] = frozenset({
     "Currency",
 })
 
+# Categories representing internal money movement, not real spending/income.
+# Excluded from dashboard income/expense KPIs (see dashboard.py, reports.py).
+TRANSFER_CATEGORIES: tuple[str, ...] = ("savings", "transfers")
+
+# Faster-payment recipient names that always represent moving money into
+# savings/investments. Matched case-insensitively as substrings of Name.
+_SAVINGS_NAME_PATTERNS: tuple[str, ...] = (
+    "moneybox",
+    "trading 212",
+    "seccl",
+)
+
 
 # ---------------------------------------------------------------------------
 # Private helpers
@@ -201,6 +213,44 @@ def _get_existing_monzo_ids(
     return existing
 
 
+def _detect_transfer_category(
+    type_: str | None,
+    name: str,
+    amount_pence: int,
+) -> str | None:
+    """Detect if a row represents an internal transfer rather than spending.
+
+    Monzo's own ``Category`` column is accurate for Pot transfers and Flex
+    repayments, but mis-categorises Faster Payments to investment providers
+    (e.g. Moneybox LISA, Trading 212, Seccl) as ``General``. This helper
+    standardises all three cases so the dashboard can exclude them via
+    the ``TRANSFER_CATEGORIES`` filter.
+
+    Args:
+        type_: The Monzo ``Type`` value (e.g. ``"Pot transfer"``, ``"Flex"``).
+        name: The transaction's ``Name`` field.
+        amount_pence: Signed amount in pence.
+
+    Returns:
+        ``"savings"`` or ``"transfers"`` when a transfer pattern is detected,
+        otherwise ``None`` (leave the Monzo category in place).
+    """
+    if type_ == "Pot transfer":
+        return "savings"
+
+    # Flex repayments double-count: the underlying purchase already appears
+    # as a separate card payment row in the same CSV.
+    if type_ == "Flex" and amount_pence < 0:
+        return "transfers"
+
+    if type_ in ("Faster payment", "Bacs (Direct Credit)"):
+        name_lower = name.lower()
+        if any(p in name_lower for p in _SAVINGS_NAME_PATTERNS):
+            return "savings"
+
+    return None
+
+
 def _parse_monzo_row(
     row: dict[str, str],
     row_num: int,
@@ -274,6 +324,12 @@ def _parse_monzo_row(
 
     # --- Optional fields ---
     type_ = row.get("Type", "").strip() or None
+
+    # System-level transfer detection runs before user category rules
+    # (apply_rules) so Tier 2/3 rules can still override if needed.
+    detected = _detect_transfer_category(type_, name, amount_pence)
+    if detected:
+        category = detected
     emoji = row.get("Emoji", "").strip() or None
     currency = row.get("Currency", "").strip() or "GBP"
     notes = row.get("Notes and #tags", "").strip() or None

@@ -165,7 +165,8 @@ jade/
 │   │   ├── ✅ 007_tags.sql
 │   │   ├── ✅ 008_daily_journal.sql
 │   │   ├── ✅ 009_account_snapshots.sql
-│   │   └── ✅ 010_trades.sql
+│   │   ├── ✅ 010_trades.sql
+│   │   └── ✅ 011_recategorize_transfers.sql
 │   │
 │   ├── ✅ routes/               # API route blueprints
 │   │   ├── ✅ __init__.py
@@ -245,6 +246,7 @@ jade/
 └── ✅ tests/                    # Test suite
     ├── ✅ conftest.py
     ├── 🔲 test_csv_parser.py
+    ├── ✅ test_dashboard_transfers.py
     ├── ✅ test_trade_calculator.py
     ├── ✅ test_metrics_calculator.py
     ├── 🔲 test_transactions_api.py
@@ -1142,17 +1144,35 @@ User uploads CSV
 
 ### Categorisation Strategy
 
-Transactions are auto-categorised using a three-tier system:
+Transactions are auto-categorised using a four-tier system:
 
 | Tier | Source | Description |
 |------|--------|-------------|
 | **Tier 1: Monzo defaults** | CSV `Category` column | The category assigned by Monzo (e.g., `eating_out`, `groceries`). Used as-is on import. Covers ~90% of transactions. |
-| **Tier 2: Keyword rules** | `category_rules` table | If a rule's keyword matches the transaction name/description, override the Monzo category. Higher-priority rules win. |
+| **Tier 1b: Transfer detection** | Hard-coded rules in `csv_parser._detect_transfer_category` | Recognises internal-movement rows that Monzo mis-categorises so they're excluded from spending KPIs: `Pot transfer` → `savings`; `Flex` debits → `transfers` (the underlying purchase already appears as a separate card-payment row); Faster Payment / Bacs to Moneybox / Trading 212 / Seccl → `savings`. |
+| **Tier 2: Keyword rules** | `category_rules` table | If a rule's keyword matches the transaction name/description, override the previous tiers. Higher-priority rules win. |
 | **Tier 3: Learned corrections** | User manual edits | When a user manually changes a transaction's category, auto-create a keyword rule (`source = 'learned'`) so future imports of the same merchant are categorised correctly. Can be toggled off in Settings. |
 
-**Resolution order:** Tier 3 rules (learned, highest priority) → Tier 2 rules (manual) → Tier 1 (Monzo default).
+**Resolution order:** Tier 3 rules (learned, highest priority) → Tier 2 rules (manual) → Tier 1b (transfer detection) → Tier 1 (Monzo default).
 
 The system gets smarter over time: correct a category once, and all future imports of that merchant are automatically categorised.
+
+### Transfer Categories Excluded From Spending
+
+The `savings` and `transfers` categories represent internal money movement (pot
+transfers, Flex repayments, contributions to LISA / Trading 212 / Seccl) — they
+are **excluded** from the dashboard's expense and income sums and from
+`Spending by Category` / cash-flow charts. The running balance KPI still
+includes them so it matches your Monzo main-account balance.
+
+The exclusion list lives in `csv_parser.TRANSFER_CATEGORIES`. The matching name
+patterns for investment providers live in `csv_parser._SAVINGS_NAME_PATTERNS`.
+
+If you upgrade with data already imported, migration `011_recategorize_transfers`
+applies the new rules retroactively on next startup. You can also re-run the
+detection on demand via **Settings → Maintenance → Re-categorise transfers**
+(POST `/api/transactions/recategorize-transfers`). Both paths skip rows where
+you've explicitly set `custom_category`, so user overrides are preserved.
 
 ---
 
