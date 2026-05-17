@@ -402,6 +402,19 @@ export async function render(container) {
                 </a>
             </div>
         </div>
+
+        <!-- Maintenance -->
+        <div class="card mt-5">
+            <h2 class="card-title">Maintenance</h2>
+            <p class="text-secondary mb-4" style="margin-top:-8px">
+                Re-apply transfer auto-detection (Pot transfers, Flex repayments, Moneybox / Trading 212 / Seccl)
+                to existing transactions so they're excluded from spending and income totals.
+                Skips any transaction where you've set a custom category. Safe to run repeatedly.
+            </p>
+            <button type="button" id="btn-recategorize" class="btn btn-ghost">
+                Re-categorise transfers
+            </button>
+        </div>
     `;
 
     attachListeners(container);
@@ -1269,10 +1282,43 @@ async function deleteTag(id) {
 }
 
 // ---------------------------------------------------------------------------
+// Maintenance — re-categorise transfers
+// ---------------------------------------------------------------------------
+
+async function recategorizeTransfers() {
+    if (!confirm('Re-apply transfer auto-detection to all existing transactions?')) return;
+
+    const btn = document.getElementById('btn-recategorize');
+    btn.disabled = true;
+    btn.textContent = 'Re-categorising...';
+
+    try {
+        const result = await api.post('/api/transactions/recategorize-transfers', {});
+        const parts = [
+            `${result.pot_transfers} pot transfer${result.pot_transfers === 1 ? '' : 's'}`,
+            `${result.flex_repayments} Flex repayment${result.flex_repayments === 1 ? '' : 's'}`,
+            `${result.investment_providers} investment provider${result.investment_providers === 1 ? '' : 's'}`,
+        ].join(', ');
+        showToast(
+            `Re-categorised ${result.total} transaction${result.total === 1 ? '' : 's'}: ${parts}`,
+            result.total > 0 ? 'success' : 'info',
+        );
+    } catch (err) {
+        showToast(`Re-categorisation failed: ${err.message}`, 'error');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Re-categorise transfers';
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Event listeners
 // ---------------------------------------------------------------------------
 
 function attachListeners(container) {
+    // --- Maintenance listeners ---
+    container.querySelector('#btn-recategorize').addEventListener('click', recategorizeTransfers);
+
     // --- Category listeners ---
     container.querySelector('#btn-add-cat').addEventListener('click', () => {
         showForm('add');
